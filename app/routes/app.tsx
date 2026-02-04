@@ -40,9 +40,6 @@ export default function App() {
         <s-link href="/products">Products</s-link>
         <s-link href="/bundles">Bundles</s-link>
       </s-app-nav>
-      <div style={{ padding: 8 }}>
-        <small>Subscription: {subscription ? `${subscription.name} (${subscription.status})` : "None"}</small>
-      </div>
       <Outlet />
     </AppProvider>
   );

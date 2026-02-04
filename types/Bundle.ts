@@ -1,3 +1,15 @@
+// types/Bundle.ts
+export interface BundleRule {
+  id?: string;
+  tier: string;
+  totalProducts: number;
+  discountPercentage: number;
+  discountCode?: string | null;
+  shopifyPriceRuleId?: string | null;
+  shopifyDiscountCodeId?: string | null;
+  isActive?: boolean;
+}
+
 export interface Bundle {
   id: string;
   name: string;
@@ -5,17 +17,14 @@ export interface Bundle {
   collectionTitle: string;
   createdAt: string;
   updatedAt: string;
-  rules?: string; // Store rules as a JSON string in the database
-}
-
-export interface BundleRule {
-  id?: string;
-  type: string; // "quantity", "price", etc.
-  operator?: string; // "is greater than or equal to", "equals", etc.
-  value: string | number;
-  discount?: number;
-  discountCode?: string; // Generated code like "SILVER-12345"
-  tier?: string; // "SILVER", "GOLD", "PLATINUM"
+  rules: BundleRule[];
+  discountCodes: Array<{
+    code: string;
+    used: boolean;
+    ruleIndex?: number;
+    createdAt?: string;
+    discountNodeId?: string;
+  }>;
 }
 
 export interface Collection {

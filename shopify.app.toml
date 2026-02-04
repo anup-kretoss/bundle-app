@@ -7,22 +7,48 @@ embedded = true
 
 [build]
 automatically_update_urls_on_dev = true
-include_config_on_deploy = true
 
 [webhooks]
 api_version = "2026-04"
 
   [[webhooks.subscriptions]]
-  topics = [ "app/uninstalled" ]
-  uri = "/webhooks/app/uninstalled"
-
-  [[webhooks.subscriptions]]
   topics = [ "app/scopes_update" ]
   uri = "/webhooks/app/scopes_update"
 
+  [[webhooks.subscriptions]]
+  topics = [ "carts/update", "carts/create" ]
+  uri = "/webhooks/carts/create_update"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products,read_products"
+scopes = "read_discounts,read_orders,read_price_rules,read_products,write_discounts,write_price_rules,write_products,read_inventory"
 
 [auth]
 redirect_urls = [ "https://example.com/api/auth" ]
+
+[extensions.bundle-discount]
+type = "function"
+name = "Bundle Discount"
+description = "Applies automatic discounts based on bundle rules"
+api_version = "2026-01"
+
+[extensions.bundle-discount.ui.app_bridge]
+details_path = "/app"
+
+  [[extensions.bundle-discount.targeting]]
+  target = "cart.lines.discounts.generate.run"
+  input_query = "src/cart_lines_discounts_generate_run.graphql"
+  export = "cart-lines-discounts-generate-run"
+
+  [[extensions.bundle-discount.targeting]]
+  target = "cart.delivery-options.discounts.generate.run"
+  input_query = "src/cart_delivery_options_discounts_generate_run.graphql"
+  export = "cart-delivery-options-discounts-generate-run"
+
+  [extensions.bundle-discount.build]
+  command = "npm run build"
+  path = "dist/function.wasm"

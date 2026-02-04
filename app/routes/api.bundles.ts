@@ -4,240 +4,726 @@ import prisma from "../db.server";
 import type { Bundle, BundleRule } from "../../types/Bundle";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  // Add CORS headers to OPTIONS
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Credentials': 'true',
+      },
+    });
+  }
+  
   try {
-    await authenticate.admin(request);
-
+    // Allow public access to load bundles
     const bundles = await prisma.bundle.findMany({
       orderBy: { createdAt: "desc" },
     });
 
-    // Handle empty bundles gracefully
     const formattedBundles: Bundle[] = bundles.map((bundle: any) => ({
-      id: bundle.id,
+      id: String(bundle.id),
       name: bundle.name,
       collectionId: bundle.collectionId,
       collectionTitle: bundle.collectionTitle,
       createdAt: bundle.createdAt.toISOString(),
       updatedAt: bundle.updatedAt.toISOString(),
       rules: bundle.rules ? (JSON.parse(bundle.rules) as BundleRule[]) : [],
+      discountCodes: bundle.discountCodes || []
     }));
 
-    return new Response(JSON.stringify(formattedBundles), {
+    return new Response(JSON.stringify({
+      success: true,
+      count: bundles.length,
+      bundles: formattedBundles,
+      message: bundles.length === 0 ? "No bundles found. Create some in the app UI." : "Bundles loaded successfully",
+      timestamp: new Date().toISOString()
+    }), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Credentials": "true"
+      },
     });
+    
   } catch (err: any) {
-    console.error("api.bundles loader error:", err);
+    console.error("❌ [BUNDLES API] Error:", err.message);
     
-    // If authentication fails, return empty array instead of error
-    if (err instanceof Response && (err.status === 410 || err.status === 401)) {
-      return new Response(JSON.stringify([]), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    
-    throw new Response(JSON.stringify({ error: "Failed to load bundles", details: String(err) }), {
+    return new Response(JSON.stringify({
+      success: false,
+      error: "Unable to load bundles",
+      details: err.message,
+      timestamp: new Date().toISOString()
+    }), {
       status: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      },
     });
   }
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
+  // Handle CORS preflight
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Credentials': 'true',
+      },
+    });
+  }
+
   try {
-    await authenticate.admin(request);
-
-    // Support both `multipart/form-data` (formData) and `application/json` payloads.
+    // Authenticate for Shopify operations
+    const { admin, session } = await authenticate.admin(request);
+    
     const contentType = request.headers.get("content-type") || "";
-    let intent: string | null = null;
-    let bodyName: string | null = null;
-    let bodyCollectionId: string | null = null;
-    let bodyCollectionTitle: string | null = null;
-    let bodyRules: any = null;
-
-    // Parse body once and reuse parsedJson / parsedForm below to avoid "Body has already been read"
     let parsedJson: any = null;
-    let parsedForm: FormData | null = null;
+    
     if (contentType.includes("application/json")) {
       parsedJson = await request.json();
-      intent = parsedJson.intent ?? null;
-      bodyName = parsedJson.name ?? null;
-      bodyCollectionId = parsedJson.collectionId ?? null;
-      bodyCollectionTitle = parsedJson.collectionTitle ?? null;
-      bodyRules = parsedJson.rules ?? null;
     } else {
-      parsedForm = await request.formData();
-      intent = (parsedForm.get("intent") as string) ?? null;
-      bodyName = (parsedForm.get("name") as string) ?? null;
-      bodyCollectionId = (parsedForm.get("collectionId") as string) ?? null;
-      bodyCollectionTitle = (parsedForm.get("collectionTitle") as string) ?? null;
-      bodyRules = parsedForm.get("rules") ?? null;
+      throw new Error("Unsupported content type");
     }
 
+    const intent = parsedJson.intent ?? null;
+    const bundleId = parsedJson.bundleId ?? parsedJson.id ?? null;
+
+    // Handle CREATE bundle intent
     if (intent === "create") {
-      const name = bodyName;
-      const collectionId = bodyCollectionId;
-      const collectionTitle = bodyCollectionTitle;
-      const rules = bodyRules;
-
-      if (!name) {
-        throw new Response(JSON.stringify({ error: "Missing required field: name" }), {
+      const { name, collectionId, collectionTitle, rules } = parsedJson;
+      
+      if (!name || !collectionId || !collectionTitle || !rules) {
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: "Missing required fields: name, collectionId, collectionTitle, rules" 
+        }), {
           status: 400,
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          },
         });
       }
 
-      if (!collectionId) {
-        throw new Response(JSON.stringify({ error: "Missing required field: collectionId" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      if (!collectionTitle) {
-        throw new Response(JSON.stringify({ error: "Missing required field: collectionTitle" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      if (!rules) {
-        throw new Response(JSON.stringify({ error: "Missing required field: rules" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      let parsedRules;
       try {
-        parsedRules = typeof rules === "string" ? JSON.parse(rules) : rules;
-      } catch (error) {
-        throw new Response(JSON.stringify({ error: "Invalid rules format" }), {
+        const newBundle = await prisma.bundle.create({
+          data: {
+            name,
+            collectionId,
+            collectionTitle,
+            rules: JSON.stringify(rules),
+            discountCodes: []
+          },
+        });
+
+        // Sync bundles to metafields after creation
+        await syncBundlesToMetafields(request);
+
+        return new Response(JSON.stringify({ 
+          success: true,
+          bundle: {
+            id: newBundle.id,
+            name: newBundle.name,
+            collectionId: newBundle.collectionId,
+            collectionTitle: newBundle.collectionTitle,
+            createdAt: newBundle.createdAt.toISOString(),
+            updatedAt: newBundle.updatedAt.toISOString(),
+            rules: JSON.parse(newBundle.rules),
+            discountCodes: newBundle.discountCodes || []
+          },
+          message: "Bundle created successfully"
+        }), {
+          status: 200,
+          headers: { 
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          },
+        });
+      } catch (error: any) {
+        console.error("Error creating bundle:", error);
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: "Failed to create bundle",
+          details: error.message
+        }), {
+          status: 500,
+          headers: { 
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          },
+        });
+      }
+    }
+
+    // Handle UPDATE bundle intent
+    if (intent === "update") {
+      const { name, rules } = parsedJson;
+      
+      if (!bundleId) {
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: "Missing required field: bundleId" 
+        }), {
           status: 400,
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          },
         });
       }
 
-      const discountCodes = parsedRules.map((rule: any) => ({
-        code: rule.discountCode,
-        used: false,
-      }));
+      try {
+        const updateData: any = {
+          updatedAt: new Date()
+        };
+        
+        if (name) {
+          updateData.name = name;
+        }
+        
+        if (rules) {
+          // Parse existing bundle to preserve discount codes
+          const existingBundle = await prisma.bundle.findUnique({
+            where: { id: bundleId }
+          });
+          
+          if (!existingBundle) {
+            return new Response(JSON.stringify({ 
+              success: false,
+              error: "Bundle not found" 
+            }), {
+              status: 404,
+              headers: { 
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+              },
+            });
+          }
+          
+          const existingRules = JSON.parse(existingBundle.rules);
+          const updatedRules = rules.map((newRule: any, index: number) => {
+            // Preserve existing discount codes if rule has same tier
+            const existingRule = existingRules.find((r: any) => r.id === newRule.id);
+            if (existingRule && existingRule.discountCode) {
+              return {
+                ...newRule,
+                discountCode: existingRule.discountCode,
+                shopifyPriceRuleId: existingRule.shopifyPriceRuleId,
+                isActive: existingRule.isActive,
+                createdAt: existingRule.createdAt || new Date().toISOString()
+              };
+            }
+            return newRule;
+          });
+          
+          updateData.rules = JSON.stringify(updatedRules);
+        }
 
-      const bundle = await prisma.bundle.create({
-        data: {
-          name,
-          collectionId,
-          collectionTitle,
-          rules: JSON.stringify(parsedRules),
-          discountCodes,
+        const updatedBundle = await prisma.bundle.update({
+          where: { id: bundleId },
+          data: updateData,
+        });
+
+        // Sync bundles to metafields after update
+        await syncBundlesToMetafields(request);
+
+        return new Response(JSON.stringify({ 
+          success: true,
+          bundle: {
+            id: updatedBundle.id,
+            name: updatedBundle.name,
+            collectionId: updatedBundle.collectionId,
+            collectionTitle: updatedBundle.collectionTitle,
+            createdAt: updatedBundle.createdAt.toISOString(),
+            updatedAt: updatedBundle.updatedAt.toISOString(),
+            rules: JSON.parse(updatedBundle.rules),
+            discountCodes: updatedBundle.discountCodes || []
+          },
+          message: "Bundle updated successfully"
+        }), {
+          status: 200,
+          headers: { 
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          },
+        });
+      } catch (error: any) {
+        console.error("Error updating bundle:", error);
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: "Failed to update bundle",
+          details: error.message
+        }), {
+          status: 500,
+          headers: { 
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          },
+        });
+      }
+    }
+
+    // Handle DELETE bundle intent
+    if (intent === "delete") {
+      if (!bundleId) {
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: "Missing required field: bundleId" 
+        }), {
+          status: 400,
+          headers: { 
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          },
+        });
+      }
+
+      try {
+        // First, get the bundle to check for existing discounts
+        const bundle = await prisma.bundle.findUnique({
+          where: { id: bundleId }
+        });
+
+        if (!bundle) {
+          return new Response(JSON.stringify({ 
+            success: false,
+            error: "Bundle not found" 
+          }), {
+            status: 404,
+            headers: { 
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*"
+            },
+          });
+        }
+
+        // If bundle has discount codes, delete them from Shopify first
+        if (bundle.discountCodes && Array.isArray(bundle.discountCodes) && bundle.discountCodes.length > 0) {
+          const rules = JSON.parse(bundle.rules);
+          for (const rule of rules) {
+            if (rule.shopifyPriceRuleId) {
+              try {
+                await admin.graphql(`
+                  mutation discountCodeBasicDelete($id: ID!) {
+                    discountCodeBasicDelete(id: $id) {
+                      deletedDiscountCodeBasicId
+                      userErrors {
+                        field
+                        message
+                      }
+                    }
+                  }
+                `, {
+                  variables: {
+                    id: rule.shopifyPriceRuleId
+                  }
+                });
+                console.log(`Deleted discount ${rule.shopifyPriceRuleId} from Shopify`);
+              } catch (shopifyError) {
+                console.warn(`Could not delete discount ${rule.shopifyPriceRuleId} from Shopify:`, shopifyError);
+              }
+            }
+          }
+        }
+
+        // Delete the bundle from database
+        await prisma.bundle.delete({
+          where: { id: bundleId }
+        });
+
+        // Sync bundles to metafields after deletion
+        await syncBundlesToMetafields(request);
+
+        return new Response(JSON.stringify({ 
+          success: true,
+          message: "Bundle deleted successfully"
+        }), {
+          status: 200,
+          headers: { 
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          },
+        });
+      } catch (error: any) {
+        console.error("Error deleting bundle:", error);
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: "Failed to delete bundle",
+          details: error.message
+        }), {
+          status: 500,
+          headers: { 
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          },
+        });
+      }
+    }
+
+    // Handle CREATE-DISCOUNT intent
+    if (intent === "create-discount") {
+      const ruleIndex = parsedJson.ruleIndex ?? null;
+
+      if (!bundleId || ruleIndex === null) {
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: "Missing required fields: bundleId and ruleIndex" 
+        }), {
+          status: 400,
+          headers: { 
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          },
+        });
+      }
+
+      // Get the bundle from database
+      const bundle = await prisma.bundle.findUnique({
+        where: { id: bundleId }
+      });
+
+      if (!bundle) {
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: "Bundle not found" 
+        }), {
+          status: 404,
+          headers: { 
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          },
+        });
+      }
+
+      const rules = JSON.parse(bundle.rules);
+      const rule = rules[ruleIndex];
+      
+      if (!rule) {
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: "Rule not found" 
+        }), {
+          status: 404,
+          headers: { 
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          },
+        });
+      }
+
+      // Check if discount already exists for this rule
+      if (rule.discountCode && rule.isActive) {
+        return new Response(JSON.stringify({ 
+          success: true,
+          discountCode: rule.discountCode,
+          message: "Discount already exists"
+        }), {
+          status: 200,
+          headers: { 
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          },
+        });
+      }
+
+      // Generate unique discount code using previous logic
+      const randomNum = Math.floor(1000 + Math.random() * 9000);
+      const discountCode = `${rule.tier.toUpperCase().replace(/\s+/g, '_')}_${randomNum}`;
+
+      console.log(`🎯 Creating discount in Shopify:`, {
+        title: rule.tier,
+        code: discountCode,
+        discountPercentage: rule.discountPercentage,
+        totalProducts: rule.totalProducts,
+        percentageValue: rule.discountPercentage / 100
+      });
+
+      try {
+        // Use GraphQL to create discount code with DYNAMIC data
+        const graphqlResponse = await admin.graphql(`
+          mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
+            discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
+              codeDiscountNode {
+                id
+              }
+              userErrors {
+                field
+                message
+              }
+            }
+          }
+        `, {
+          variables: {
+            basicCodeDiscount: {
+              title: rule.tier,
+              code: discountCode,
+              startsAt: new Date().toISOString(),
+              usageLimit: 1,
+              customerSelection: { all: true },
+              customerGets: {
+                value: { 
+                  percentage: rule.discountPercentage / 100
+                },
+                items: { all: true }
+              },
+              minimumRequirement: {
+                quantity: { 
+                  greaterThanOrEqualToQuantity: rule.totalProducts.toString()
+                }
+              }
+            }
+          }
+        });
+
+        const result: any = await graphqlResponse.json();
+        
+        console.log("📦 Shopify GraphQL response:", JSON.stringify(result, null, 2));
+        
+        if (result.data?.discountCodeBasicCreate?.userErrors?.length > 0) {
+          const errors = result.data.discountCodeBasicCreate.userErrors;
+          console.error("❌ GraphQL errors:", errors);
+          return new Response(JSON.stringify({ 
+            success: false,
+            error: "Failed to create discount code in Shopify",
+            details: errors.map((e: any) => `${e.field}: ${e.message}`).join(', '),
+            shopifyResponse: result
+          }), {
+            status: 400,
+            headers: { 
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*"
+            },
+          });
+        }
+
+        if (!result.data?.discountCodeBasicCreate?.codeDiscountNode?.id) {
+          console.error("❌ No discount node ID returned:", result);
+          return new Response(JSON.stringify({ 
+            success: false,
+            error: "Failed to create discount code - no ID returned",
+            shopifyResponse: result
+          }), {
+            status: 500,
+            headers: { 
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*"
+            },
+          });
+        }
+
+        const discountNodeId = result.data.discountCodeBasicCreate.codeDiscountNode.id;
+
+        console.log(`✅ Discount created successfully in Shopify: ${discountCode} (ID: ${discountNodeId})`);
+
+        // Update the rule with discount info
+        rules[ruleIndex] = {
+          ...rule,
+          discountCode,
+          shopifyPriceRuleId: discountNodeId,
+          shopifyDiscountCodeId: discountNodeId,
+          isActive: true,
+          createdAt: new Date().toISOString()
+        };
+
+        // Update bundle in database
+        const updatedBundle = await prisma.bundle.update({
+          where: { id: bundleId },
+          data: { 
+            rules: JSON.stringify(rules),
+            discountCodes: [...(bundle.discountCodes || []), {
+              code: discountCode,
+              used: false,
+              ruleIndex,
+              createdAt: new Date().toISOString(),
+              discountNodeId: discountNodeId
+            }]
+          },
+        });
+
+        // Sync bundles to metafields after creating discount
+        await syncBundlesToMetafields(request);
+
+        return new Response(JSON.stringify({ 
+          success: true,
+          discountCode,
+          discountNodeId,
+          message: `Discount "${discountCode}" created successfully in Shopify`,
+          rule: {
+            tier: rule.tier,
+            discountPercentage: rule.discountPercentage,
+            totalProducts: rule.totalProducts
+          }
+        }), {
+          status: 200,
+          headers: { 
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          },
+        });
+      } catch (shopifyError: any) {
+        console.error("❌ Shopify API error:", shopifyError);
+        
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: "Failed to create discount in Shopify",
+          details: shopifyError.message,
+          stack: shopifyError.stack
+        }), {
+          status: 500,
+          headers: { 
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          },
+        });
+      }
+    }
+
+    // Handle other intents
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: "Invalid intent" 
+    }), {
+      status: 400,
+      headers: { 
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      },
+    });
+    
+  } catch (err: any) {
+    console.error("❌ api.bundles action error:", err);
+    
+    // Check if it's an authentication error
+    if (err.message?.includes("authenticate") || err.status === 401 || err.status === 403) {
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: "Authentication failed",
+        details: "Please ensure you're logged into the Shopify admin",
+        message: err.message
+      }), {
+        status: 401,
+        headers: { 
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
         },
       });
-
-      return new Response(JSON.stringify({ id: bundle.id }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
     }
-
-    if (intent === "update-rules") {
-      // Derive bundleId and rules from previously extracted values or request body
-      let bundleIdField: string | null = null;
-      let rulesField: any = null;
-      if (parsedJson) {
-        bundleIdField = parsedJson.bundleId ?? parsedJson.id ?? null;
-        rulesField = parsedJson.rules ?? null;
-      } else if (parsedForm) {
-        bundleIdField = (parsedForm.get("bundleId") as string) ?? (parsedForm.get("id") as string) ?? null;
-        rulesField = bodyRules ?? (parsedForm.get("rules") as any) ?? null;
-      }
-
-      if (!bundleIdField || !rulesField) {
-        throw new Response(JSON.stringify({ error: "Missing required fields" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      let parsedRules = typeof rulesField === "string" ? JSON.parse(rulesField) : rulesField;
-      const discountCodes = parsedRules.map((rule: any) => ({
-        code: rule.discountCode,
-        used: false,
-      }));
-
-      await prisma.bundle.update({
-        where: { id: bundleIdField },
-        data: { rules: JSON.stringify(parsedRules), discountCodes },
-      });
-
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    if (intent === "update-bundle") {
-      // Update only the bundle name (and optionally collection fields in future)
-      let bundleIdField: string | null = null;
-      let nameField: string | null = null;
-      if (parsedJson) {
-        bundleIdField = parsedJson.bundleId ?? parsedJson.id ?? null;
-        nameField = parsedJson.name ?? null;
-      } else if (parsedForm) {
-        bundleIdField = (parsedForm.get("bundleId") as string) ?? (parsedForm.get("id") as string) ?? null;
-        nameField = (parsedForm.get("name") as string) ?? null;
-      }
-
-      if (!bundleIdField || !nameField) {
-        throw new Response(JSON.stringify({ error: "Missing required fields for update-bundle" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      await prisma.bundle.update({ where: { id: bundleIdField }, data: { name: nameField } });
-
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    if (intent === "delete-bundle") {
-      let bundleIdField: string | null = null;
-      if (parsedJson) {
-        bundleIdField = parsedJson.bundleId ?? parsedJson.id ?? null;
-      } else if (parsedForm) {
-        bundleIdField = (parsedForm.get("bundleId") as string) ?? (parsedForm.get("id") as string) ?? null;
-      }
-
-      if (!bundleIdField) {
-        throw new Response(JSON.stringify({ error: "Missing bundle id for delete-bundle" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      await prisma.bundle.delete({ where: { id: bundleIdField } });
-
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    throw new Response(JSON.stringify({ error: "Invalid intent" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (err: any) {
-    console.error("api.bundles action error:", err);
-    if (err instanceof Response) {
-      throw err;
-    }
-    throw new Response(JSON.stringify({ error: "Failed to process request", details: String(err) }), {
+    
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: "Failed to process request", 
+      details: err.message || String(err)
+    }), {
       status: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      },
     });
   }
 };
+
+// Sync bundles to Shopify metafields function
+async function syncBundlesToMetafields(request: Request) {
+  try {
+    const { admin } = await authenticate.admin(request);
+    
+    console.log("🔄 [METAFIELD SYNC] Starting bundle sync to Shopify...");
+    
+    // Get all bundles
+    const bundles = await prisma.bundle.findMany();
+    
+    if (bundles.length === 0) {
+      console.log("⚠️ [METAFIELD SYNC] No bundles found to sync");
+      return;
+    }
+    
+    console.log(`📦 [METAFIELD SYNC] Found ${bundles.length} bundles to sync`);
+    
+    // Prepare bundle configurations
+    const bundleConfigs = bundles.map(bundle => {
+      try {
+        return {
+          bundleId: bundle.id,
+          bundleName: bundle.name,
+          collectionId: bundle.collectionId,
+          collectionTitle: bundle.collectionTitle,
+          rules: bundle.rules ? JSON.parse(bundle.rules) : [],
+          createdAt: bundle.createdAt.toISOString(),
+          updatedAt: bundle.updatedAt.toISOString()
+        };
+      } catch (error) {
+        console.error(`❌ [METAFIELD SYNC] Error parsing rules for bundle ${bundle.id}:`, error);
+        return {
+          bundleId: bundle.id,
+          bundleName: bundle.name,
+          collectionId: bundle.collectionId,
+          collectionTitle: bundle.collectionTitle,
+          rules: [],
+          error: "Failed to parse rules"
+        };
+      }
+    });
+
+    const metafieldValue = JSON.stringify({
+      bundles: bundleConfigs,
+      syncTimestamp: new Date().toISOString(),
+      syncVersion: "1.0"
+    });
+
+    console.log(`📊 [METAFIELD SYNC] Bundle data prepared: ${bundleConfigs.length} bundles`);
+
+    // Create or update shop metafield
+    try {
+      const response = await admin.graphql(`
+        mutation UpdateShopMetafield($metafields: [MetafieldsSetInput!]!) {
+          metafieldsSet(metafields: $metafields) {
+            metafields {
+              id
+              key
+              namespace
+              value
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+      `, {
+        variables: {
+          metafields: [{
+            namespace: "bundle_app",
+            key: "rules",
+            type: "json",
+            value: metafieldValue,
+            ownerType: "SHOP"
+          }]
+        }
+      });
+
+      const result: any = await response.json();
+      
+      if (result.data?.metafieldsSet?.userErrors?.length > 0) {
+        console.error("❌ [METAFIELD SYNC] Error updating shop metafield:", result.data.metafieldsSet.userErrors);
+      } else {
+        console.log("✅ [METAFIELD SYNC] Successfully synced bundles to Shopify metafield");
+      }
+    } catch (error: any) {
+      console.error("❌ [METAFIELD SYNC] Failed to update shop metafield:", error.message);
+    }
+
+    console.log("✅ [METAFIELD SYNC] Sync completed successfully");
+    
+  } catch (error: any) {
+    console.error("❌ [METAFIELD SYNC] Critical error:", error.message);
+    // Don't throw the error to avoid breaking the main flow
+  }
+}

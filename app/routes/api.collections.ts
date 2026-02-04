@@ -5,7 +5,7 @@ import type { Collection } from "../../types/Bundle";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   try {
     const { admin, session } = await authenticate.admin(request);
-    
+
     if (!session) {
       console.error("No session found");
       return json([]);
@@ -13,12 +13,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     const shop = session.shop;
     const accessToken = session.accessToken;
-    
+
     if (!accessToken) {
       console.error("No access token found");
       return json([]);
     }
-    
+
     const apiVersion = "2024-10";
 
     // Use REST API for more reliable collection fetching
@@ -27,7 +27,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       "Content-Type": "application/json",
       "X-Shopify-Access-Token": accessToken,
     };
-    
+
     const [customResponse, smartResponse] = await Promise.all([
       fetch(`https://${shop}/admin/api/${apiVersion}/custom_collections.json?limit=250`, {
         method: "GET",

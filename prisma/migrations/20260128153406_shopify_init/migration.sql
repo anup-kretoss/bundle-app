@@ -1,4 +1,4 @@
--- CreateTable
+-- Create Session table (Shopify default)
 CREATE TABLE "Session" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "shop" TEXT NOT NULL,
@@ -16,5 +16,9 @@ CREATE TABLE "Session" (
     "collaborator" BOOLEAN DEFAULT false,
     "emailVerified" BOOLEAN DEFAULT false,
     "refreshToken" TEXT,
-    "refreshTokenExpires" DATETIME
+    "refreshTokenExpires" DATETIME,
+    UNIQUE("shop")
 );
+
+-- Create index for performance
+CREATE INDEX "Session_shop_idx" ON "Session"("shop");

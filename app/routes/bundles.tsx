@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { useLoaderData, useNavigate, useRevalidator } from "react-router";
-import { boundary } from "@shopify/shopify-app-react-router/server";
+
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import type { Bundle, BundleRule } from "../../types/Bundle";
@@ -22,21 +22,23 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       createdAt: bundle.createdAt.toISOString(),
       updatedAt: bundle.updatedAt.toISOString(),
       rules: bundle.rules ? (JSON.parse(bundle.rules) as BundleRule[]) : [],
+      discountCodes: bundle.discountCodes || []
     }));
 
-    return formattedBundles;
+    return { bundles: formattedBundles };
   } catch (err: any) {
     console.error("Bundles loader error:", err);
-    return [];
+    return { bundles: [] };
   }
 };
 
 export default function BundlesRoute() {
-  const bundles = useLoaderData() as Bundle[];
+  const loaderData = useLoaderData() as { bundles: Bundle[] };
+  const bundles = loaderData.bundles;
   const navigate = useNavigate();
   const revalidator = useRevalidator();
 
-  const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
+  const [toasts, setToasts] = useState<{ id: string; message: string; variant: 'success' | 'error' | 'info' }[]>([]);
   const showToast = (message: string, variant: 'success' | 'error' | 'info' = 'info', duration = 5000) => {
     try {
       const globalApp = (window as any)?.appBridge;
@@ -47,26 +49,27 @@ export default function BundlesRoute() {
             tb.create(globalApp, { message, duration }).dispatch(tb.Action.SHOW);
             return;
           }
-        } catch (e) {}
+        } catch (e) { }
       }
-    } catch (e) {}
+    } catch (e) { }
 
     const id = String(Date.now()) + Math.random().toString(36).slice(2, 7);
-    setToasts((t) => [...t, { id, message, variant } as any]);
+    setToasts((t) => [...t, { id, message, variant }]);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), duration);
   };
 
   const [editingBundleId, setEditingBundleId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState<string>("");
-  const [editingRules, setEditingRules] = useState<any[]>([]);
+  const [editingRules, setEditingRules] = useState<BundleRule[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name?: string } | null>(null);
-  const [showCollections, setShowCollections] = useState(false);
   const [collections, setCollections] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedCollection, setSelectedCollection] = useState<any>(null);
   const [bundleName, setBundleName] = useState("");
+  const [isInitializing, setIsInitializing] = useState(true);
 
+  // Fetch collections and check authentication
   const fetchCollections = async () => {
     setLoading(true);
     setError(null);
@@ -77,6 +80,10 @@ export default function BundlesRoute() {
       });
 
       if (!response.ok) {
+        if (response.status === 401 || response.status === 410) {
+          window.location.href = "/app";
+          return;
+        }
         throw new Error("Failed to fetch collections");
       }
 
@@ -87,6 +94,7 @@ export default function BundlesRoute() {
       setError("Failed to load collections. Please try again later.");
     } finally {
       setLoading(false);
+      setIsInitializing(false);
     }
   };
 
@@ -94,65 +102,181 @@ export default function BundlesRoute() {
     fetchCollections();
   }, []);
 
+  const validateRule = (rule: any) => {
+    const tier = String(rule?.tier || "").trim();
+    const totalProducts = Number(rule?.totalProducts || 0);
+    const discountPercentage = Number(rule?.discountPercentage || 0);
+
+    if (!tier) return "Discount Name (Tier) is required";
+    if (!Number.isFinite(totalProducts) || totalProducts <= 0)
+      return "Total Products must be greater than 0";
+    if (!Number.isFinite(discountPercentage) || discountPercentage <= 0)
+      return "Discount Percentage must be greater than 0";
+
+    return null;
+  };
+
+  const isBundleNameDuplicate = (name: string, excludeBundleId?: string) => {
+    const normalized = String(name || "").trim().toLowerCase();
+    if (!normalized) return false;
+
+    return bundles.some((b) => {
+      if (excludeBundleId && b.id === excludeBundleId) return false;
+      return String(b.name || "").trim().toLowerCase() === normalized;
+    });
+  };
+
+  const validateCreateBundle = () => {
+    if (!selectedCollection) return "Please select a collection.";
+    if (!bundleName.trim()) return "Bundle name is required.";
+
+    if (isBundleNameDuplicate(bundleName)) {
+      return "Bundle name already exists. Please use a unique name.";
+    }
+
+    const rules = selectedCollection?.rules || [];
+    if (!rules.length) return "Please add at least one rule.";
+
+    for (let i = 0; i < rules.length; i++) {
+      const err = validateRule(rules[i]);
+      if (err) return `Rule ${i + 1}: ${err}`;
+    }
+
+    return null;
+  };
+
+  const validateUpdateBundle = (bundleId: string, name: string, rules: BundleRule[]) => {
+    if (!String(name || "").trim()) return "Bundle name is required.";
+
+    if (isBundleNameDuplicate(name, bundleId)) {
+      return "Bundle name already exists. Please use a unique name.";
+    }
+
+    if (!rules?.length) return "At least one rule is required.";
+
+    for (let i = 0; i < rules.length; i++) {
+      const err = validateRule(rules[i]);
+      if (err) return `Rule ${i + 1}: ${err}`;
+    }
+
+    return null;
+  };
+
+  if (isInitializing) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      }}>
+        <div style={{
+          background: '#fff',
+          padding: '40px',
+          borderRadius: '16px',
+          textAlign: 'center',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.15)'
+        }}>
+          <div style={{
+            width: '60px',
+            height: '60px',
+            border: '6px solid #e2e8f0',
+            borderTop: '6px solid #667eea',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 20px'
+          }} />
+          <h2 style={{
+            fontSize: '20px',
+            fontWeight: '600',
+            color: '#1a202c',
+            margin: '0 0 10px 0'
+          }}>
+            Loading Bundles...
+          </h2>
+          <p style={{
+            fontSize: '14px',
+            color: '#718096',
+            margin: 0
+          }}>
+            Please wait while we load your bundle data
+          </p>
+        </div>
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
   const handleCreateBundle = async () => {
-    if (!selectedCollection) {
-      setError("Please select a collection.");
-      return;
-    }
-
-    if (!bundleName.trim()) {
-      setError("Please provide a valid bundle name.");
-      return;
-    }
-
-    if (!selectedCollection.rules || selectedCollection.rules.length === 0) {
-      setError("Please add at least one rule.");
+    const validationError = validateCreateBundle();
+    if (validationError) {
+      setError(validationError);
+      showToast(validationError, "error");
       return;
     }
 
     setLoading(true);
     setError(null);
+
     try {
       const response = await fetch(`/api/bundles`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           intent: "create",
-          name: bundleName,
+          name: bundleName.trim(),
           collectionId: selectedCollection.id,
           collectionTitle: selectedCollection.title,
-          rules: selectedCollection.rules,
+          rules: selectedCollection.rules.map((rule: any) => ({
+            ...rule,
+            tier: String(rule.tier || "").trim(),
+            totalProducts: Number(rule.totalProducts || 0),
+            discountPercentage: Number(rule.discountPercentage || 0),
+            id: rule.id || Date.now().toString() + Math.random().toString(36).substring(7),
+            discountCode: null,
+            isActive: false,
+            shopifyPriceRuleId: null,
+          })),
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create bundle");
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || result.message || "Failed to create bundle");
       }
 
-      const result = await response.json();
-      console.log("Bundle created successfully:", result);
       revalidator.revalidate();
-      showToast("Bundle created successfully!", "success");
+      showToast(result.message || "Bundle created successfully!", "success");
       setBundleName("");
       setSelectedCollection(null);
     } catch (err: any) {
       console.error("Error creating bundle:", err);
-      setError(err.message || "Failed to create bundle. Please try again later.");
+      const msg = err.message || "Failed to create bundle. Please try again later.";
+      setError(msg);
+      showToast(msg, "error");
     } finally {
       setLoading(false);
     }
   };
 
+
   const handleAddRule = () => {
     const newRule = {
-      id: Date.now().toString(),
+      id: Date.now().toString() + Math.random().toString(36).substring(7),
       tier: "",
       totalProducts: 0,
       discountPercentage: 0,
-      discountCode: "",
+      discountCode: null,
+      isActive: false,
+      shopifyPriceRuleId: null
     };
 
     setSelectedCollection({
@@ -186,69 +310,204 @@ export default function BundlesRoute() {
     handleEditingRuleQtyChange(index, current + delta);
   };
 
-  const generateDiscountCode = (tier: string) => {
-    if (!tier?.trim()) return "";
-    const random = Math.floor(1000 + Math.random() * 9000);
-    return `${tier.toUpperCase()}-${random}`;
-  };
-
   const handleRuleChange = (index: number, field: string, value: any) => {
     const updatedRules = [...selectedCollection.rules];
     updatedRules[index][field] = value;
-
-    if (field === "tier") {
-      updatedRules[index].discountCode = generateDiscountCode(value);
-    }
-
     setSelectedCollection({
       ...selectedCollection,
       rules: updatedRules,
     });
   };
 
+  // Create discount code for a rule
+  const handleCreateDiscountCode = async (bundleId: string, ruleIndex: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/bundles`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          intent: "create-discount",
+          bundleId: bundleId,
+          ruleIndex: ruleIndex
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || result.message || "Failed to create discount");
+      }
+
+      console.log("Discount created successfully:", result);
+      revalidator.revalidate();
+      showToast(result.message || "Discount code created successfully!", "success");
+    } catch (err: any) {
+      console.error("Error creating discount:", err);
+      setError(err.message || "Failed to create discount code. Please try again later.");
+      showToast(err.message || "Failed to create discount", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Delete bundle
+  const handleDeleteBundle = async (bundleId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/bundles`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          intent: "delete",
+          bundleId: bundleId
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || result.message || "Failed to delete bundle");
+      }
+
+      console.log("Bundle deleted successfully:", result);
+      revalidator.revalidate();
+      showToast(result.message || "Bundle deleted successfully!", "success");
+      setConfirmDelete(null);
+    } catch (err: any) {
+      console.error("Error deleting bundle:", err);
+      setError(err.message || "Failed to delete bundle. Please try again later.");
+      showToast(err.message || "Failed to delete bundle", "error");
+    } finally {
+      setLoading(false);
+      setConfirmDelete(null);
+    }
+  };
+
+  // Update bundle
+  const handleUpdateBundle = async (bundleId: string, name: string, rules: BundleRule[]) => {
+    // FIXED: Pass parameters in correct order
+    const validationError = validateUpdateBundle(bundleId, name, rules);
+    if (validationError) {
+      setError(validationError);
+      showToast(validationError, "error");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/bundles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          intent: "update",
+          bundleId,
+          name: name.trim(),
+          rules: rules.map((r: any) => ({
+            ...r,
+            tier: String(r.tier || "").trim(),
+            totalProducts: Number(r.totalProducts || 0),
+            discountPercentage: Number(r.discountPercentage || 0),
+          })),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || result.message || "Failed to update bundle");
+      }
+
+      setEditingBundleId(null);
+      setEditingName("");
+      setEditingRules([]);
+      revalidator.revalidate();
+      showToast(result.message || "Bundle updated successfully!", "success");
+    } catch (err: any) {
+      console.error("Save bundle edit error", err);
+      const msg = err.message || "Failed to save changes";
+      setError(msg);
+      showToast(msg, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add rule when editing
+  const handleAddEditingRule = () => {
+    const newRule: BundleRule = {
+      id: Date.now().toString() + Math.random().toString(36).substring(7),
+      tier: "",
+      totalProducts: 0,
+      discountPercentage: 0,
+      discountCode: null,
+      isActive: false,
+      shopifyPriceRuleId: null
+    };
+    setEditingRules([...editingRules, newRule]);
+  };
+
+  // Delete rule when editing
+  const handleDeleteEditingRule = (index: number) => {
+    const updatedRules = [...editingRules];
+    updatedRules.splice(index, 1);
+    setEditingRules(updatedRules);
+  };
+
   return (
-    <div style={{ 
-      minHeight: '100vh', 
+    <div className="page-container" style={{
+      minHeight: '100vh',
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       padding: '40px 20px',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
     }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <div className="content-wrapper" style={{ maxWidth: '1200px', margin: '0 auto' }}>
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-          <h1 style={{ 
-            fontSize: '42px', 
-            fontWeight: '700', 
-            color: '#fff', 
+        <div className="page-header" style={{ textAlign: 'center', marginBottom: '48px' }}>
+          <h1 style={{
+            fontSize: '42px',
+            fontWeight: '700',
+            color: '#fff',
             margin: '0 0 12px 0',
             textShadow: '0 2px 4px rgba(0,0,0,0.1)'
           }}>
             Bundle Builder
           </h1>
-          <p style={{ 
-            fontSize: '18px', 
-            color: 'rgba(255,255,255,0.9)', 
-            margin: 0 
+          <p style={{
+            fontSize: '18px',
+            color: 'rgba(255,255,255,0.9)',
+            margin: 0
           }}>
             Create powerful product bundles with custom discount tiers
           </p>
         </div>
 
         {/* Main Content Card */}
-        <div style={{ 
-          background: '#fff', 
-          borderRadius: '16px', 
+        <div className="main-card" style={{
+          background: '#fff',
+          borderRadius: '16px',
           boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
           padding: '40px',
           marginBottom: '32px'
         }}>
           {error && (
-            <div style={{ 
-              padding: '16px 20px', 
-              background: '#fee', 
+            <div style={{
+              padding: '16px 20px',
+              background: '#fee',
               border: '1px solid #fcc',
-              borderRadius: '12px', 
-              color: '#c33', 
+              borderRadius: '12px',
+              color: '#c33',
               marginBottom: '24px',
               display: 'flex',
               alignItems: 'center',
@@ -261,22 +520,22 @@ export default function BundlesRoute() {
 
           {/* Collection Selection */}
           <div style={{ marginBottom: '32px' }}>
-            <label style={{ 
-              display: 'block', 
-              fontSize: '16px', 
-              fontWeight: '600', 
+            <label style={{
+              display: 'block',
+              fontSize: '16px',
+              fontWeight: '600',
               color: '#1a202c',
               marginBottom: '12px'
             }}>
               Select Collection
             </label>
             {loading ? (
-              <div style={{ 
-                padding: '40px', 
-                textAlign: 'center', 
-                color: '#718096' 
+              <div style={{
+                padding: '40px',
+                textAlign: 'center',
+                color: '#718096'
               }}>
-                <div style={{ 
+                <div style={{
                   display: 'inline-block',
                   width: '40px',
                   height: '40px',
@@ -295,9 +554,9 @@ export default function BundlesRoute() {
                     const collection = collections.find((col) => col.id === e.target.value);
                     setSelectedCollection(collection);
                   }}
-                  style={{ 
-                    width: '100%', 
-                    padding: '14px 16px', 
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
                     fontSize: '15px',
                     border: '2px solid #e2e8f0',
                     borderRadius: '10px',
@@ -317,10 +576,10 @@ export default function BundlesRoute() {
 
                 {selectedCollection && (
                   <div style={{ marginTop: '20px' }}>
-                    <label style={{ 
-                      display: 'block', 
-                      fontSize: '16px', 
-                      fontWeight: '600', 
+                    <label style={{
+                      display: 'block',
+                      fontSize: '16px',
+                      fontWeight: '600',
                       color: '#1a202c',
                       marginBottom: '12px'
                     }}>
@@ -331,9 +590,9 @@ export default function BundlesRoute() {
                       value={bundleName}
                       onChange={(e) => setBundleName(e.target.value)}
                       placeholder="e.g., Summer Collection Bundle"
-                      style={{ 
-                        width: '100%', 
-                        padding: '14px 16px', 
+                      style={{
+                        width: '90%',
+                        padding: '14px 16px',
                         fontSize: '15px',
                         border: '2px solid #e2e8f0',
                         borderRadius: '10px',
@@ -350,36 +609,37 @@ export default function BundlesRoute() {
           {/* Rules Section */}
           {selectedCollection && (
             <div style={{ marginBottom: '32px' }}>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 marginBottom: '20px'
               }}>
                 <div>
-                  <h2 style={{ 
-                    fontSize: '20px', 
-                    fontWeight: '600', 
+                  <h2 style={{
+                    fontSize: '20px',
+                    fontWeight: '600',
                     color: '#1a202c',
                     margin: '0 0 4px 0'
                   }}>
                     Discount Rules
                   </h2>
-                  <p style={{ 
-                    fontSize: '14px', 
-                    color: '#718096', 
-                    margin: 0 
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#718096',
+                    margin: 0
                   }}>
                     for {selectedCollection.title}
                   </p>
                 </div>
                 <button
                   onClick={handleAddRule}
-                  style={{ 
-                    padding: '12px 24px', 
+                  className="add-rule-btn"
+                  style={{
+                    padding: '12px 24px',
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: '#fff', 
-                    border: 'none', 
+                    color: '#fff',
+                    border: 'none',
                     borderRadius: '10px',
                     fontSize: '15px',
                     fontWeight: '600',
@@ -392,12 +652,13 @@ export default function BundlesRoute() {
                 </button>
               </div>
 
-              <div style={{ display: 'grid', gap: '16px' }}>
-                {selectedCollection.rules?.map((rule, index) => (
-                  <div 
-                    key={rule.id} 
-                    style={{ 
-                      padding: '24px', 
+              <div className="rules-list" style={{ display: 'grid', gap: '16px' }}>
+                {selectedCollection.rules?.map((rule: any, index: number) => (
+                  <div
+                    key={rule.id}
+                    className="rule-form-card"
+                    style={{
+                      padding: '24px',
                       border: '2px solid #e2e8f0',
                       borderRadius: '12px',
                       background: '#fafafa',
@@ -407,12 +668,13 @@ export default function BundlesRoute() {
                   >
                     <button
                       onClick={() => {
-                        const updatedRules = selectedCollection.rules.filter((r) => r.id !== rule.id);
+                        const updatedRules = selectedCollection.rules.filter((r: any) => r.id !== rule.id);
                         setSelectedCollection({ ...selectedCollection, rules: updatedRules });
                       }}
-                      style={{ 
-                        position: 'absolute', 
-                        top: '16px', 
+                      className="remove-rule-btn"
+                      style={{
+                        position: 'absolute',
+                        top: '16px',
                         right: '16px',
                         width: '32px',
                         height: '32px',
@@ -431,16 +693,16 @@ export default function BundlesRoute() {
                       ✕
                     </button>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', paddingRight: '40px' }}>
+                    <div className="rule-fields-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', paddingRight: '40px' }}>
                       <div>
-                        <label style={{ 
-                          display: 'block', 
-                          fontSize: '13px', 
+                        <label style={{
+                          display: 'block',
+                          fontSize: '13px',
                           fontWeight: '600',
                           color: '#4a5568',
                           marginBottom: '8px'
                         }}>
-                          Tier Name
+                          Discount Name
                         </label>
                         <input
                           type="text"
@@ -461,9 +723,9 @@ export default function BundlesRoute() {
                       </div>
 
                       <div>
-                        <label style={{ 
-                          display: 'block', 
-                          fontSize: '13px', 
+                        <label style={{
+                          display: 'block',
+                          fontSize: '13px',
                           fontWeight: '600',
                           color: '#4a5568',
                           marginBottom: '8px'
@@ -471,10 +733,10 @@ export default function BundlesRoute() {
                           Total Products
                         </label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <button 
-                            onClick={() => handleSelectedRuleQtyInc(index, -1)} 
-                            style={{ 
-                              width: '40px', 
+                          <button
+                            onClick={() => handleSelectedRuleQtyInc(index, -1)}
+                            style={{
+                              width: '40px',
                               height: '46px',
                               background: '#fff',
                               border: '2px solid #e2e8f0',
@@ -496,7 +758,7 @@ export default function BundlesRoute() {
                               const v = e.target.value.replace(/[^0-9]/g, '');
                               handleSelectedRuleQtyChange(index, v === '' ? 0 : Number(v));
                             }}
-                            style={{ 
+                            style={{
                               flex: 1,
                               minWidth: 0,
                               padding: '12px',
@@ -508,10 +770,10 @@ export default function BundlesRoute() {
                               boxSizing: 'border-box'
                             }}
                           />
-                          <button 
-                            onClick={() => handleSelectedRuleQtyInc(index, 1)} 
-                            style={{ 
-                              width: '40px', 
+                          <button
+                            onClick={() => handleSelectedRuleQtyInc(index, 1)}
+                            style={{
+                              width: '40px',
                               height: '46px',
                               background: '#fff',
                               border: '2px solid #e2e8f0',
@@ -528,9 +790,9 @@ export default function BundlesRoute() {
                       </div>
 
                       <div>
-                        <label style={{ 
-                          display: 'block', 
-                          fontSize: '13px', 
+                        <label style={{
+                          display: 'block',
+                          fontSize: '13px',
                           fontWeight: '600',
                           color: '#4a5568',
                           marginBottom: '8px'
@@ -544,40 +806,13 @@ export default function BundlesRoute() {
                           value={String(rule.discountPercentage ?? '')}
                           onChange={(e) => handleRuleChange(index, 'discountPercentage', Number(e.target.value.replace(/[^0-9]/g, '') || 0))}
                           placeholder="0"
-                          style={{ 
+                          style={{
                             width: 'calc(100% - 28px)',
                             padding: '12px 14px',
                             fontSize: '15px',
                             border: '2px solid #e2e8f0',
                             borderRadius: '8px',
                             background: '#fff',
-                            boxSizing: 'border-box'
-                          }}
-                        />
-                      </div>
-
-                      <div>
-                        <label style={{ 
-                          display: 'block', 
-                          fontSize: '13px', 
-                          fontWeight: '600',
-                          color: '#4a5568',
-                          marginBottom: '8px'
-                        }}>
-                          Discount Code
-                        </label>
-                        <input
-                          type="text"
-                          value={rule.discountCode}
-                          readOnly
-                          style={{ 
-                            width: 'calc(100% - 28px)',
-                            padding: '12px 14px',
-                            fontSize: '15px',
-                            border: '2px solid #e2e8f0',
-                            borderRadius: '8px',
-                            background: '#f7fafc',
-                            color: '#718096',
                             boxSizing: 'border-box'
                           }}
                         />
@@ -594,7 +829,7 @@ export default function BundlesRoute() {
             <button
               onClick={handleCreateBundle}
               disabled={loading}
-              style={{ 
+              style={{
                 width: '100%',
                 padding: '16px',
                 background: loading ? '#cbd5e0' : 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
@@ -614,15 +849,15 @@ export default function BundlesRoute() {
         </div>
 
         {/* Bundles List */}
-        <div style={{ 
-          background: '#fff', 
-          borderRadius: '16px', 
+        <div className="bundles-list-card" style={{
+          background: '#fff',
+          borderRadius: '16px',
           boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
           padding: '40px'
         }}>
-          <h2 style={{ 
-            fontSize: '24px', 
-            fontWeight: '600', 
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: '600',
             color: '#1a202c',
             margin: '0 0 24px 0'
           }}>
@@ -630,8 +865,8 @@ export default function BundlesRoute() {
           </h2>
 
           {bundles.length === 0 ? (
-            <div style={{ 
-              textAlign: 'center', 
+            <div style={{
+              textAlign: 'center',
               padding: '60px 20px',
               color: '#718096'
             }}>
@@ -639,11 +874,12 @@ export default function BundlesRoute() {
               <p style={{ fontSize: '16px', margin: 0 }}>No bundles created yet. Start building your first bundle!</p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gap: '20px' }}>
+            <div className="bundles-grid" style={{ display: 'grid', gap: '20px' }}>
               {bundles.map((bundle) => (
-                <div 
-                  key={bundle.id} 
-                  style={{ 
+                <div
+                  key={bundle.id}
+                  className="bundle-item-card"
+                  style={{
                     border: '2px solid #e2e8f0',
                     borderRadius: '12px',
                     padding: '24px',
@@ -651,17 +887,17 @@ export default function BundlesRoute() {
                     transition: 'all 0.2s'
                   }}
                 >
-                  <div style={{ marginBottom: '20px' }}>
-                    <h3 style={{ 
-                      fontSize: '20px', 
-                      fontWeight: '600', 
+                  <div className="bundle-info" style={{ marginBottom: '20px' }}>
+                    <h3 style={{
+                      fontSize: '20px',
+                      fontWeight: '600',
                       color: '#1a202c',
                       margin: '0 0 8px 0'
                     }}>
                       {bundle.name}
                     </h3>
-                    <div style={{ 
-                      display: 'flex', 
+                    <div className="bundle-meta" style={{
+                      display: 'flex',
                       gap: '16px',
                       fontSize: '14px',
                       color: '#718096'
@@ -671,25 +907,26 @@ export default function BundlesRoute() {
                     </div>
                   </div>
 
-                  <div style={{ 
+                  <div className="bundle-rules-section" style={{
                     background: '#fff',
                     borderRadius: '8px',
                     padding: '16px',
                     marginBottom: '16px'
                   }}>
-                    <div style={{ 
-                      fontSize: '13px', 
+                    <div style={{
+                      fontSize: '13px',
                       fontWeight: '600',
                       color: '#4a5568',
                       marginBottom: '12px'
                     }}>
                       Discount Rules
                     </div>
-                    <div style={{ display: 'grid', gap: '12px' }}>
+                    <div className="bundle-rules-display-grid" style={{ display: 'grid', gap: '12px' }}>
                       {bundle.rules.map((rule, index) => (
-                        <div 
+                        <div
                           key={index}
-                          style={{ 
+                          className="bundle-rule-row"
+                          style={{
                             display: 'grid',
                             gridTemplateColumns: 'repeat(4, 1fr)',
                             gap: '12px',
@@ -711,31 +948,31 @@ export default function BundlesRoute() {
                             <div style={{ color: '#718096', fontSize: '12px', marginBottom: '4px' }}>Discount</div>
                             <div style={{ fontWeight: '600', color: '#48bb78' }}>{rule.discountPercentage}%</div>
                           </div>
-                          <div>
-                            <div style={{ color: '#718096', fontSize: '12px', marginBottom: '4px' }}>Code</div>
-                            <div style={{ 
-                              fontWeight: '600', 
-                              color: '#667eea',
-                              fontFamily: 'monospace'
+                          {/* <div>
+                            <div style={{ color: '#718096', fontSize: '12px', marginBottom: '4px' }}>Status</div>
+                            <div style={{
+                              fontWeight: '600',
+                              color: rule.discountCode ? '#667eea' : '#718096',
+                              fontFamily: rule.discountCode ? 'monospace' : 'inherit'
                             }}>
-                              {rule.discountCode}
+                              {rule.discountCode || 'No discount'}
                             </div>
-                          </div>
+                          </div> */}
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {editingBundleId === bundle.id ? (
-                    <div style={{ 
+                    <div className="editing-container" style={{
                       background: '#fff',
                       borderRadius: '12px',
                       padding: '24px',
                       marginBottom: '16px',
                       border: '2px solid #667eea'
                     }}>
-                      <div style={{ marginBottom: '20px' }}>
-                        <label style={{ 
+                      <div className="edit-field" style={{ marginBottom: '20px' }}>
+                        <label style={{
                           display: 'block',
                           fontSize: '13px',
                           fontWeight: '600',
@@ -744,24 +981,26 @@ export default function BundlesRoute() {
                         }}>
                           Bundle Name
                         </label>
-                        <input 
-                          value={editingName} 
-                          onChange={(e) => setEditingName(e.target.value)} 
-                          style={{ 
-                            width: '100%',
+                        <input
+                          value={editingName}
+                          className="edit-input"
+                          onChange={(e) => setEditingName(e.target.value)}
+                          style={{
+                            width: '90%',
                             padding: '12px 14px',
                             fontSize: '15px',
                             border: '2px solid #e2e8f0',
                             borderRadius: '8px'
-                          }} 
+                          }}
                         />
                       </div>
 
-                      <div style={{ display: 'grid', gap: '16px' }}>
+                      <div className="edit-rules-list" style={{ display: 'grid', gap: '16px' }}>
                         {editingRules.map((rule, idx) => (
-                          <div 
-                            key={rule.id} 
-                            style={{ 
+                          <div
+                            key={rule.id}
+                            className="edit-rule-item"
+                            style={{
                               display: 'grid',
                               gridTemplateColumns: 'repeat(2, 1fr)',
                               gap: '16px',
@@ -772,9 +1011,9 @@ export default function BundlesRoute() {
                               position: 'relative'
                             }}
                           >
-                            <button 
-                              onClick={() => setEditingRules((r) => r.filter((x) => x.id !== rule.id))}
-                              style={{ 
+                            <button
+                              onClick={() => handleDeleteEditingRule(idx)}
+                              style={{
                                 position: 'absolute',
                                 top: '12px',
                                 right: '12px',
@@ -792,14 +1031,14 @@ export default function BundlesRoute() {
                             </button>
 
                             <div>
-                              <label style={{ 
+                              <label style={{
                                 display: 'block',
                                 fontSize: '12px',
                                 fontWeight: '600',
                                 color: '#4a5568',
                                 marginBottom: '6px'
                               }}>
-                                Tier Name
+                                Discount Name
                               </label>
                               <input
                                 type="text"
@@ -808,10 +1047,9 @@ export default function BundlesRoute() {
                                   const updated = [...editingRules];
                                   const tier = e.target.value;
                                   updated[idx].tier = tier;
-                                  updated[idx].discountCode = generateDiscountCode(tier);
                                   setEditingRules(updated);
                                 }}
-                                style={{ 
+                                style={{
                                   width: 'calc(100% - 28px)',
                                   padding: '10px 12px',
                                   fontSize: '14px',
@@ -824,7 +1062,7 @@ export default function BundlesRoute() {
                             </div>
 
                             <div>
-                              <label style={{ 
+                              <label style={{
                                 display: 'block',
                                 fontSize: '12px',
                                 fontWeight: '600',
@@ -834,9 +1072,9 @@ export default function BundlesRoute() {
                                 Total Products
                               </label>
                               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                <button 
-                                  onClick={() => handleEditingRuleQtyInc(idx, -1)} 
-                                  style={{ 
+                                <button
+                                  onClick={() => handleEditingRuleQtyInc(idx, -1)}
+                                  style={{
                                     width: '36px',
                                     height: '42px',
                                     background: '#fff',
@@ -849,16 +1087,16 @@ export default function BundlesRoute() {
                                 >
                                   −
                                 </button>
-                                <input 
-                                  type="text" 
-                                  inputMode="numeric" 
-                                  pattern="[0-9]*" 
-                                  value={String(rule.totalProducts ?? '')} 
-                                  onChange={(e) => { 
-                                    const v = e.target.value.replace(/[^0-9]/g, ''); 
-                                    handleEditingRuleQtyChange(idx, v === '' ? 0 : Number(v)); 
-                                  }} 
-                                  style={{ 
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
+                                  value={String(rule.totalProducts ?? '')}
+                                  onChange={(e) => {
+                                    const v = e.target.value.replace(/[^0-9]/g, '');
+                                    handleEditingRuleQtyChange(idx, v === '' ? 0 : Number(v));
+                                  }}
+                                  style={{
                                     flex: 1,
                                     minWidth: 0,
                                     padding: '10px',
@@ -868,11 +1106,11 @@ export default function BundlesRoute() {
                                     textAlign: 'center',
                                     background: '#fff',
                                     boxSizing: 'border-box'
-                                  }} 
+                                  }}
                                 />
-                                <button 
-                                  onClick={() => handleEditingRuleQtyInc(idx, 1)} 
-                                  style={{ 
+                                <button
+                                  onClick={() => handleEditingRuleQtyInc(idx, 1)}
+                                  style={{
                                     width: '36px',
                                     height: '42px',
                                     background: '#fff',
@@ -889,7 +1127,7 @@ export default function BundlesRoute() {
                             </div>
 
                             <div>
-                              <label style={{ 
+                              <label style={{
                                 display: 'block',
                                 fontSize: '12px',
                                 fontWeight: '600',
@@ -898,18 +1136,18 @@ export default function BundlesRoute() {
                               }}>
                                 Discount %
                               </label>
-                              <input 
-                                type="text" 
-                                inputMode="numeric" 
-                                pattern="[0-9]*" 
-                                value={String(rule.discountPercentage ?? '')} 
-                                onChange={(e) => { 
-                                  const updated = [...editingRules]; 
-                                  const v = Number(e.target.value.replace(/[^0-9]/g, '') || 0); 
-                                  updated[idx].discountPercentage = v; 
-                                  setEditingRules(updated); 
-                                }} 
-                                style={{ 
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={String(rule.discountPercentage ?? '')}
+                                onChange={(e) => {
+                                  const updated = [...editingRules];
+                                  const v = Number(e.target.value.replace(/[^0-9]/g, '') || 0);
+                                  updated[idx].discountPercentage = v;
+                                  setEditingRules(updated);
+                                }}
+                                style={{
                                   width: 'calc(100% - 28px)',
                                   padding: '10px 12px',
                                   fontSize: '14px',
@@ -917,76 +1155,15 @@ export default function BundlesRoute() {
                                   borderRadius: '6px',
                                   background: '#fff',
                                   boxSizing: 'border-box'
-                                }} 
+                                }}
                               />
-                            </div>
-
-                            <div>
-                              <label style={{ 
-                                display: 'block',
-                                fontSize: '12px',
-                                fontWeight: '600',
-                                color: '#4a5568',
-                                marginBottom: '6px'
-                              }}>
-                                Discount Code
-                              </label>
-                              <div style={{ display: 'flex', gap: '8px' }}>
-                                <input 
-                                  type="text" 
-                                  value={rule.discountCode ?? ''} 
-                                  onChange={(e) => { 
-                                    const updated = [...editingRules]; 
-                                    updated[idx].discountCode = e.target.value; 
-                                    setEditingRules(updated); 
-                                  }} 
-                                  style={{ 
-                                    flex: 1,
-                                    minWidth: 0,
-                                    padding: '10px 12px',
-                                    fontSize: '14px',
-                                    border: '2px solid #e2e8f0',
-                                    borderRadius: '6px',
-                                    background: '#fff',
-                                    fontFamily: 'monospace',
-                                    boxSizing: 'border-box'
-                                  }} 
-                                />
-                                <button 
-                                  onClick={async () => { 
-                                    try { 
-                                      await navigator.clipboard.writeText(rule.discountCode || ''); 
-                                      showToast('Code copied!', 'success'); 
-                                    } catch (e) { 
-                                      showToast('Copy failed', 'error'); 
-                                    } 
-                                  }} 
-                                  style={{ 
-                                    padding: '10px 16px',
-                                    background: '#fff',
-                                    border: '2px solid #e2e8f0',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    fontSize: '14px',
-                                    fontWeight: '600',
-                                    flexShrink: 0
-                                  }}
-                                >
-                                  📋
-                                </button>
-                              </div>
                             </div>
                           </div>
                         ))}
 
-                        <button 
-                          onClick={() => setEditingRules((r) => [...r, { 
-                            id: Date.now().toString(), 
-                            totalProducts: 0, 
-                            discountPercentage: 0, 
-                            discountCode: '' 
-                          }])} 
-                          style={{ 
+                        <button
+                          onClick={handleAddEditingRule}
+                          style={{
                             padding: '12px',
                             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                             color: '#fff',
@@ -1001,9 +1178,9 @@ export default function BundlesRoute() {
                         </button>
                       </div>
 
-                      <div style={{ 
-                        display: 'flex', 
-                        gap: '12px', 
+                      <div style={{
+                        display: 'flex',
+                        gap: '12px',
                         marginTop: '20px',
                         justifyContent: 'flex-end'
                       }}>
@@ -1013,7 +1190,7 @@ export default function BundlesRoute() {
                             setEditingName('');
                             setEditingRules([]);
                           }}
-                          style={{ 
+                          style={{
                             padding: '12px 20px',
                             background: '#fff',
                             color: '#4a5568',
@@ -1027,50 +1204,8 @@ export default function BundlesRoute() {
                           Cancel
                         </button>
                         <button
-                          onClick={async () => {
-                            setLoading(true);
-                            setError(null);
-                            try {
-                              const resName = await fetch('/api/bundles', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                credentials: 'include',
-                                body: JSON.stringify({
-                                  intent: 'update-bundle',
-                                  bundleId: bundle.id,
-                                  name: editingName
-                                }),
-                              });
-                              const nameData = await resName.json();
-                              if (!resName.ok) throw new Error(nameData?.error || 'Failed to update bundle name');
-
-                              const resRules = await fetch('/api/bundles', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                credentials: 'include',
-                                body: JSON.stringify({
-                                  intent: 'update-rules',
-                                  bundleId: bundle.id,
-                                  rules: editingRules
-                                }),
-                              });
-                              const rulesData = await resRules.json();
-                              if (!resRules.ok) throw new Error(rulesData?.error || 'Failed to update rules');
-
-                              setEditingBundleId(null);
-                              setEditingName('');
-                              setEditingRules([]);
-                              revalidator.revalidate();
-                              showToast('Bundle updated successfully!', 'success');
-                            } catch (err: any) {
-                              console.error('Save bundle edit error', err);
-                              setError(err.message || 'Failed to save changes');
-                              showToast(err?.message || 'Failed to save changes', 'error');
-                            } finally {
-                              setLoading(false);
-                            }
-                          }}
-                          style={{ 
+                          onClick={() => handleUpdateBundle(bundle.id, editingName, editingRules)}
+                          style={{
                             padding: '12px 24px',
                             background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
                             color: '#fff',
@@ -1092,9 +1227,9 @@ export default function BundlesRoute() {
                         onClick={() => {
                           setEditingBundleId(bundle.id);
                           setEditingName(bundle.name);
-                          setEditingRules(bundle.rules ? JSON.parse(JSON.stringify(bundle.rules)) : []);
+                          setEditingRules(bundle.rules.map(rule => ({ ...rule, id: rule.id || Date.now().toString() + Math.random().toString(36).substring(7) })));
                         }}
-                        style={{ 
+                        style={{
                           padding: '10px 20px',
                           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                           color: '#fff',
@@ -1110,7 +1245,7 @@ export default function BundlesRoute() {
                       </button>
                       <button
                         onClick={() => setConfirmDelete({ id: bundle.id, name: bundle.name })}
-                        style={{ 
+                        style={{
                           padding: '10px 20px',
                           background: '#fff',
                           color: '#e53e3e',
@@ -1134,10 +1269,11 @@ export default function BundlesRoute() {
 
       {/* Delete Confirmation Modal */}
       {confirmDelete && (
-        <div 
-          role="dialog" 
-          aria-modal="true" 
-          style={{ 
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="modal-overlay"
+          style={{
             position: 'fixed',
             inset: 0,
             display: 'flex',
@@ -1148,21 +1284,21 @@ export default function BundlesRoute() {
             backdropFilter: 'blur(4px)'
           }}
         >
-          <div style={{ 
+          <div className="modal-content" style={{
             width: '440px',
             background: '#fff',
             borderRadius: '16px',
             padding: '32px',
             boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
           }}>
-            <div style={{ 
+            <div style={{
               fontSize: '40px',
               textAlign: 'center',
               marginBottom: '16px'
             }}>
               ⚠️
             </div>
-            <h3 style={{ 
+            <h3 style={{
               margin: '0 0 12px 0',
               fontSize: '22px',
               fontWeight: '600',
@@ -1171,7 +1307,7 @@ export default function BundlesRoute() {
             }}>
               Delete Bundle?
             </h3>
-            <p style={{ 
+            <p style={{
               color: '#718096',
               textAlign: 'center',
               fontSize: '15px',
@@ -1180,13 +1316,13 @@ export default function BundlesRoute() {
             }}>
               Are you sure you want to delete <strong style={{ color: '#1a202c' }}>{confirmDelete.name}</strong>? This action cannot be undone.
             </p>
-            <div style={{ 
+            <div className="modal-actions" style={{
               display: 'flex',
               gap: '12px'
             }}>
-              <button 
-                onClick={() => setConfirmDelete(null)} 
-                style={{ 
+              <button
+                onClick={() => setConfirmDelete(null)}
+                style={{
                   flex: 1,
                   padding: '12px',
                   borderRadius: '10px',
@@ -1200,32 +1336,9 @@ export default function BundlesRoute() {
               >
                 Cancel
               </button>
-              <button 
-                onClick={async () => {
-                  setLoading(true);
-                  try {
-                    const res = await fetch('/api/bundles', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        intent: 'delete-bundle',
-                        bundleId: confirmDelete.id
-                      }),
-                      credentials: 'include'
-                    });
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data?.error || data?.message || 'Failed to delete bundle');
-                    showToast('Bundle deleted successfully', 'success');
-                    revalidator.revalidate();
-                  } catch (err: any) {
-                    console.error('Delete error', err);
-                    showToast(err?.message || 'Failed to delete bundle', 'error');
-                  } finally {
-                    setLoading(false);
-                    setConfirmDelete(null);
-                  }
-                }} 
-                style={{ 
+              <button
+                onClick={() => handleDeleteBundle(confirmDelete.id)}
+                style={{
                   flex: 1,
                   padding: '12px',
                   borderRadius: '10px',
@@ -1246,9 +1359,10 @@ export default function BundlesRoute() {
       )}
 
       {/* Toast Notifications */}
-      <div 
-        aria-live="polite" 
-        style={{ 
+      <div
+        aria-live="polite"
+        className="toast-container"
+        style={{
           position: 'fixed',
           right: '24px',
           bottom: '24px',
@@ -1256,17 +1370,18 @@ export default function BundlesRoute() {
           width: '360px'
         }}
       >
-        {toasts.map((t: any) => (
-          <div 
-            key={t.id} 
-            style={{ 
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className="toast-item"
+            style={{
               marginBottom: '12px',
               padding: '16px 20px',
               borderRadius: '12px',
               boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-              background: t.variant === 'success' ? 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)' : 
-                          t.variant === 'error' ? 'linear-gradient(135deg, #e53e3e 0%, #c53030 100%)' : 
-                          'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: t.variant === 'success' ? 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)' :
+                t.variant === 'error' ? 'linear-gradient(135deg, #e53e3e 0%, #c53030 100%)' :
+                  'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               color: '#fff',
               display: 'flex',
               alignItems: 'center',
@@ -1277,7 +1392,7 @@ export default function BundlesRoute() {
             <span style={{ fontSize: '20px' }}>
               {t.variant === 'success' ? '✓' : t.variant === 'error' ? '⚠' : 'ℹ'}
             </span>
-            <span style={{ 
+            <span style={{
               fontSize: '15px',
               fontWeight: '500',
               flex: 1
@@ -1288,7 +1403,7 @@ export default function BundlesRoute() {
         ))}
       </div>
 
-      {/* Animation Keyframes */}
+      {/* Animation Keyframes and Responsive Styles */}
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
@@ -1313,6 +1428,72 @@ export default function BundlesRoute() {
           border-color: #667eea !important;
           box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
         }
+
+        /* Responsive Overrides */
+        @media (max-width: 768px) {
+          .page-container {
+            padding: 20px 12px !important;
+          }
+          .page-header h1 {
+            font-size: 28px !important;
+          }
+          .page-header p {
+            font-size: 15px !important;
+          }
+          .main-card, .bundles-list-card {
+            padding: 20px !important;
+          }
+          .rule-fields-grid, .edit-rule-item {
+            grid-template-columns: 1fr !important;
+            padding-right: 0 !important;
+          }
+          .rule-fields-grid > div {
+             width: 100% !important;
+          }
+          .rule-fields-grid input, .edit-rule-item input {
+            width: 100% !important;
+          }
+          .bundle-rule-row {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px !important;
+          }
+          .modal-content {
+            width: 90% !important;
+            padding: 24px !important;
+          }
+          .toast-container {
+            width: calc(100% - 48px) !important;
+            right: 24px !important;
+            left: 24px !important;
+          }
+          .bundle-meta {
+            flex-direction: column !important;
+            gap: 4px !important;
+          }
+          .add-rule-btn {
+            width: 100% !important;
+            margin-top: 10px !important;
+          }
+          .page-header {
+            margin-bottom: 24px !important;
+          }
+          .remove-rule-btn {
+             top: 8px !important;
+             right: 8px !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .bundle-rule-row {
+            grid-template-columns: 1fr !important;
+          }
+          .modal-actions {
+            flex-direction: column !important;
+          }
+          .page-header h1 {
+            font-size: 24px !important;
+          }
+        }
       `}</style>
     </div>
   );
@@ -1320,6 +1501,4 @@ export default function BundlesRoute() {
 
 import { useRouteError } from "react-router";
 
-export function ErrorBoundary() {
-  return boundary.error(useRouteError());
-}
+

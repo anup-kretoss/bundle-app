@@ -1,0 +1,13 @@
+{% assign bundle = bundle | default: 0 | round %}
+{% assign max_stars = 5 %}
+{% assign blank_stars = max_stars | minus: bundle %}
+
+<span class="bundle">
+  {{ 'ratings.bundle.label' | t }}:
+  {% for i in (1..bundle) %}
+    ★
+  {% endfor %}
+  {% for i in (1..blank_stars) %}
+    ☆
+  {% endfor %}
+</span>
