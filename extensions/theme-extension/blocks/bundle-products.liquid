@@ -792,7 +792,7 @@ async function fetchAllBundles() {
 
     bundleState.isFetchingBundles = true;
     showLoader('Fetching bundles...');
-    const APP_URL = 'https://python-rev-sas-milwaukee.trycloudflare.com';
+    const APP_URL = 'https://suzuki-simplified-coastal-andale.trycloudflare.com';
 
     const response = await fetch(`${APP_URL}/api/bundles`, {
       headers: {
@@ -993,7 +993,7 @@ async function createDiscountCodeAPI(rule, collectionId) {
   try {
     showLoader(`Activating ${rule.discountPercentage}% bundle offer...`);
     updateRuleCardStatus(rule.bundleId, rule.tierIndex || 0, 'creating');
-    const APP_URL = 'https://python-rev-sas-milwaukee.trycloudflare.com';
+    const APP_URL = 'https://suzuki-simplified-coastal-andale.trycloudflare.com';
 
     const response = await fetch(`${APP_URL}/api/create-discount`, {
       method: 'POST',

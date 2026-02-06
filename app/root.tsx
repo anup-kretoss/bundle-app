@@ -15,9 +15,6 @@ export default function App() {
         <Links />
       </head>
       <body>
-        <nav>
-          <s-link href="/products">Products</s-link>
-        </nav>
         <Outlet />
         <ScrollRestoration />
         <Scripts />
