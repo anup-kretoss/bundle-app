@@ -15,7 +15,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       },
     });
   }
-  
+
   try {
     // Allow public access to load bundles
     const bundles = await prisma.bundle.findMany({
@@ -41,16 +41,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       timestamp: new Date().toISOString()
     }), {
       status: 200,
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Credentials": "true"
       },
     });
-    
+
   } catch (err: any) {
     console.error("❌ [BUNDLES API] Error:", err.message);
-    
+
     return new Response(JSON.stringify({
       success: false,
       error: "Unable to load bundles",
@@ -58,7 +58,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       timestamp: new Date().toISOString()
     }), {
       status: 500,
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*"
       },
@@ -82,10 +82,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   try {
     // Authenticate for Shopify operations
     const { admin, session } = await authenticate.admin(request);
-    
+
     const contentType = request.headers.get("content-type") || "";
     let parsedJson: any = null;
-    
+
     if (contentType.includes("application/json")) {
       parsedJson = await request.json();
     } else {
@@ -98,14 +98,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     // Handle CREATE bundle intent
     if (intent === "create") {
       const { name, collectionId, collectionTitle, rules } = parsedJson;
-      
+
       if (!name || !collectionId || !collectionTitle || !rules) {
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           success: false,
-          error: "Missing required fields: name, collectionId, collectionTitle, rules" 
+          error: "Missing required fields: name, collectionId, collectionTitle, rules"
         }), {
           status: 400,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
           },
@@ -126,7 +126,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         // Sync bundles to metafields after creation
         await syncBundlesToMetafields(request);
 
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           success: true,
           bundle: {
             id: newBundle.id,
@@ -141,20 +141,20 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           message: "Bundle created successfully"
         }), {
           status: 200,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
           },
         });
       } catch (error: any) {
         console.error("Error creating bundle:", error);
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           success: false,
           error: "Failed to create bundle",
           details: error.message
         }), {
           status: 500,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
           },
@@ -165,14 +165,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     // Handle UPDATE bundle intent
     if (intent === "update") {
       const { name, rules } = parsedJson;
-      
+
       if (!bundleId) {
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           success: false,
-          error: "Missing required field: bundleId" 
+          error: "Missing required field: bundleId"
         }), {
           status: 400,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
           },
@@ -183,30 +183,30 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         const updateData: any = {
           updatedAt: new Date()
         };
-        
+
         if (name) {
           updateData.name = name;
         }
-        
+
         if (rules) {
           // Parse existing bundle to preserve discount codes
           const existingBundle = await prisma.bundle.findUnique({
             where: { id: bundleId }
           });
-          
+
           if (!existingBundle) {
-            return new Response(JSON.stringify({ 
+            return new Response(JSON.stringify({
               success: false,
-              error: "Bundle not found" 
+              error: "Bundle not found"
             }), {
               status: 404,
-              headers: { 
+              headers: {
                 "Content-Type": "application/json",
                 "Access-Control-Allow-Origin": "*"
               },
             });
           }
-          
+
           const existingRules = JSON.parse(existingBundle.rules);
           const updatedRules = rules.map((newRule: any, index: number) => {
             // Preserve existing discount codes if rule has same tier
@@ -222,7 +222,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             }
             return newRule;
           });
-          
+
           updateData.rules = JSON.stringify(updatedRules);
         }
 
@@ -234,7 +234,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         // Sync bundles to metafields after update
         await syncBundlesToMetafields(request);
 
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           success: true,
           bundle: {
             id: updatedBundle.id,
@@ -249,20 +249,20 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           message: "Bundle updated successfully"
         }), {
           status: 200,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
           },
         });
       } catch (error: any) {
         console.error("Error updating bundle:", error);
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           success: false,
           error: "Failed to update bundle",
           details: error.message
         }), {
           status: 500,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
           },
@@ -273,12 +273,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     // Handle DELETE bundle intent
     if (intent === "delete") {
       if (!bundleId) {
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           success: false,
-          error: "Missing required field: bundleId" 
+          error: "Missing required field: bundleId"
         }), {
           status: 400,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
           },
@@ -292,12 +292,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         });
 
         if (!bundle) {
-          return new Response(JSON.stringify({ 
+          return new Response(JSON.stringify({
             success: false,
-            error: "Bundle not found" 
+            error: "Bundle not found"
           }), {
             status: 404,
-            headers: { 
+            headers: {
               "Content-Type": "application/json",
               "Access-Control-Allow-Origin": "*"
             },
@@ -341,25 +341,25 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         // Sync bundles to metafields after deletion
         await syncBundlesToMetafields(request);
 
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           success: true,
           message: "Bundle deleted successfully"
         }), {
           status: 200,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
           },
         });
       } catch (error: any) {
         console.error("Error deleting bundle:", error);
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           success: false,
           error: "Failed to delete bundle",
           details: error.message
         }), {
           status: 500,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
           },
@@ -372,12 +372,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const ruleIndex = parsedJson.ruleIndex ?? null;
 
       if (!bundleId || ruleIndex === null) {
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           success: false,
-          error: "Missing required fields: bundleId and ruleIndex" 
+          error: "Missing required fields: bundleId and ruleIndex"
         }), {
           status: 400,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
           },
@@ -390,12 +390,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       });
 
       if (!bundle) {
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           success: false,
-          error: "Bundle not found" 
+          error: "Bundle not found"
         }), {
           status: 404,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
           },
@@ -404,14 +404,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
       const rules = JSON.parse(bundle.rules);
       const rule = rules[ruleIndex];
-      
+
       if (!rule) {
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           success: false,
-          error: "Rule not found" 
+          error: "Rule not found"
         }), {
           status: 404,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
           },
@@ -420,13 +420,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
       // Check if discount already exists for this rule
       if (rule.discountCode && rule.isActive) {
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           success: true,
           discountCode: rule.discountCode,
           message: "Discount already exists"
         }), {
           status: 200,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
           },
@@ -468,13 +468,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
               usageLimit: 1,
               customerSelection: { all: true },
               customerGets: {
-                value: { 
+                value: {
                   percentage: rule.discountPercentage / 100
                 },
                 items: { all: true }
               },
               minimumRequirement: {
-                quantity: { 
+                quantity: {
                   greaterThanOrEqualToQuantity: rule.totalProducts.toString()
                 }
               }
@@ -483,20 +483,20 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         });
 
         const result: any = await graphqlResponse.json();
-        
+
         console.log("📦 Shopify GraphQL response:", JSON.stringify(result, null, 2));
-        
+
         if (result.data?.discountCodeBasicCreate?.userErrors?.length > 0) {
           const errors = result.data.discountCodeBasicCreate.userErrors;
           console.error("❌ GraphQL errors:", errors);
-          return new Response(JSON.stringify({ 
+          return new Response(JSON.stringify({
             success: false,
             error: "Failed to create discount code in Shopify",
             details: errors.map((e: any) => `${e.field}: ${e.message}`).join(', '),
             shopifyResponse: result
           }), {
             status: 400,
-            headers: { 
+            headers: {
               "Content-Type": "application/json",
               "Access-Control-Allow-Origin": "*"
             },
@@ -505,13 +505,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
         if (!result.data?.discountCodeBasicCreate?.codeDiscountNode?.id) {
           console.error("❌ No discount node ID returned:", result);
-          return new Response(JSON.stringify({ 
+          return new Response(JSON.stringify({
             success: false,
             error: "Failed to create discount code - no ID returned",
             shopifyResponse: result
           }), {
             status: 500,
-            headers: { 
+            headers: {
               "Content-Type": "application/json",
               "Access-Control-Allow-Origin": "*"
             },
@@ -535,7 +535,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         // Update bundle in database
         const updatedBundle = await prisma.bundle.update({
           where: { id: bundleId },
-          data: { 
+          data: {
             rules: JSON.stringify(rules),
             discountCodes: [...(bundle.discountCodes || []), {
               code: discountCode,
@@ -550,7 +550,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         // Sync bundles to metafields after creating discount
         await syncBundlesToMetafields(request);
 
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           success: true,
           discountCode,
           discountNodeId,
@@ -562,22 +562,22 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           }
         }), {
           status: 200,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
           },
         });
       } catch (shopifyError: any) {
         console.error("❌ Shopify API error:", shopifyError);
-        
-        return new Response(JSON.stringify({ 
+
+        return new Response(JSON.stringify({
           success: false,
           error: "Failed to create discount in Shopify",
           details: shopifyError.message,
           stack: shopifyError.stack
         }), {
           status: 500,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
           },
@@ -586,43 +586,43 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     // Handle other intents
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       success: false,
-      error: "Invalid intent" 
+      error: "Invalid intent"
     }), {
       status: 400,
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*"
       },
     });
-    
+
   } catch (err: any) {
     console.error("❌ api.bundles action error:", err);
-    
+
     // Check if it's an authentication error
     if (err.message?.includes("authenticate") || err.status === 401 || err.status === 403) {
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         success: false,
         error: "Authentication failed",
         details: "Please ensure you're logged into the Shopify admin",
         message: err.message
       }), {
         status: 401,
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*"
         },
       });
     }
-    
-    return new Response(JSON.stringify({ 
+
+    return new Response(JSON.stringify({
       success: false,
-      error: "Failed to process request", 
+      error: "Failed to process request",
       details: err.message || String(err)
     }), {
       status: 500,
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*"
       },
@@ -631,22 +631,22 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 // Sync bundles to Shopify metafields function
-async function syncBundlesToMetafields(request: Request) {
+export async function syncBundlesToMetafields(request: Request) {
   try {
     const { admin } = await authenticate.admin(request);
-    
+
     console.log("🔄 [METAFIELD SYNC] Starting bundle sync to Shopify...");
-    
+
     // Get all bundles
     const bundles = await prisma.bundle.findMany();
-    
+
     if (bundles.length === 0) {
       console.log("⚠️ [METAFIELD SYNC] No bundles found to sync");
       return;
     }
-    
+
     console.log(`📦 [METAFIELD SYNC] Found ${bundles.length} bundles to sync`);
-    
+
     // Prepare bundle configurations
     const bundleConfigs = bundles.map(bundle => {
       try {
@@ -674,6 +674,7 @@ async function syncBundlesToMetafields(request: Request) {
 
     const metafieldValue = JSON.stringify({
       bundles: bundleConfigs,
+      appUrl: process.env.SHOPIFY_APP_URL,
       syncTimestamp: new Date().toISOString(),
       syncVersion: "1.0"
     });
@@ -710,7 +711,7 @@ async function syncBundlesToMetafields(request: Request) {
       });
 
       const result: any = await response.json();
-      
+
       if (result.data?.metafieldsSet?.userErrors?.length > 0) {
         console.error("❌ [METAFIELD SYNC] Error updating shop metafield:", result.data.metafieldsSet.userErrors);
       } else {
@@ -721,7 +722,7 @@ async function syncBundlesToMetafields(request: Request) {
     }
 
     console.log("✅ [METAFIELD SYNC] Sync completed successfully");
-    
+
   } catch (error: any) {
     console.error("❌ [METAFIELD SYNC] Critical error:", error.message);
     // Don't throw the error to avoid breaking the main flow

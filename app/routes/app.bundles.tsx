@@ -107,7 +107,7 @@ export default function BundlesRoute() {
     const totalProducts = Number(rule?.totalProducts || 0);
     const discountPercentage = Number(rule?.discountPercentage || 0);
 
-    if (!tier) return "Discount Name (Tier) is required";
+    if (!tier) return "Discount Name is required";
     if (!Number.isFinite(totalProducts) || totalProducts <= 0)
       return "Total Products must be greater than 0";
     if (!Number.isFinite(discountPercentage) || discountPercentage <= 0)
@@ -489,7 +489,7 @@ export default function BundlesRoute() {
             color: 'rgba(255,255,255,0.9)',
             margin: 0
           }}>
-            Create powerful product bundles with custom discount tiers
+            Create custom product bundles with custom discounts to boost your sales!
           </p>
         </div>
 

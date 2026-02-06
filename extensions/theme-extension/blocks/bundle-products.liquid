@@ -1,4 +1,6 @@
 {% assign collection = collections[block.settings.collection] %}
+{% assign bundle_rules_metafield = shop.metafields.bundle_app.rules.value %}
+{% assign app_url = bundle_rules_metafield.appUrl | default: "/apps/bundle-app" %}
 
 {% style %}
 .bundle-wrapper{max-width:1200px;margin:0 auto;padding:20px 16px 140px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;position:relative}
@@ -7,9 +9,8 @@
 .bundle-description{font-size:16px;color:#718096;margin-bottom:24px;line-height:1.5}
 .bundle-rules-container{margin-bottom:30px}
 .bundle-rules-title{font-size:18px;font-weight:600;margin-bottom:16px;color:#2d3748;text-align:center}
-.bundle-rules{display:flex;justify-content:center;gap:12px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px;margin-bottom:20px;-webkit-overflow-scrolling:touch}
-.bundle-rules::-webkit-scrollbar{height:6px}.bundle-rules::-webkit-scrollbar-thumb{background:#cbd5e0;border-radius:999px}
-.bundle-rule-card{background:#fff;border-radius:10px;padding:14px;min-width:140px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06);border:1.5px solid #e2e8f0;transition:all .2s ease;flex:0 0 auto}
+.bundle-rules{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;padding:0 4px}
+.bundle-rule-card{background:#fff;border-radius:12px;padding:16px 12px;min-width:130px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06);border:1.5px solid #e2e8f0;transition:all .2s ease;flex:1 1 140px;max-width:180px;display:flex;flex-direction:column;justify-content:center;align-items:center}
 .bundle-rule-card.active{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:#667eea;transform:translateY(-2px);box-shadow:0 8px 20px rgba(102,126,234,.3)}
 .bundle-rule-card.active .rule-tier,.bundle-rule-card.active .rule-quantity,.bundle-rule-card.active .rule-discount{color:#fff}
 .bundle-toast{position:fixed;top:16px;right:16px;z-index:999999;padding:12px 16px;border-radius:14px;background:#111827;color:#fff;font-size:14px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;transform:translateY(-12px);transition:all .28s ease;max-width:360px}
@@ -19,7 +20,7 @@
 .bundle-toast.warning{background:linear-gradient(135deg,#d97706,#b45309)}
 .bundle-toast.error{background:linear-gradient(135deg,#dc2626,#b91c1c)}
 body.no-scroll { overflow: hidden !important; }
-.fixed-progress-bar{position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#fff;box-shadow:0 -4px 20px rgba(0,0,0,.12);border-top:2px solid #e2e8f0;width:100%;max-width:100vw;transition:all .3s ease}
+.fixed-progress-bar{position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(255,255,255,0.98);backdrop-filter:blur(10px);box-shadow:0 -10px 30px rgba(0,0,0,0.08);border-top:1px solid rgba(0,0,0,0.05);width:100%;max-width:100vw;transition:all .3s cubic-bezier(0.4, 0, 0.2, 1);padding-bottom:env(safe-area-inset-bottom)}
 .progress-bar-header{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;min-height:60px}
 .progress-header-left{display:flex;align-items:center;gap:12px;flex:1}
 .progress-icon{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;flex-shrink:0}
@@ -195,9 +196,22 @@ body.no-scroll { overflow: hidden !important; }
   .modal-actions { flex-direction: column; gap: 12px; }
   .modal-add-btn, .modal-view-product { height: 50px; width: 100%; }
   
-  /* Progress Bar Mobile */
-  .progress-actions { flex-direction: column; gap: 10px; }
-  .apply-discount-btn, .view-cart-btn { width: 100%; }
+  /* Progress Bar Mobile Improvements */
+  .progress-bar-header { min-height: 54px; padding: 8px 16px; }
+  .progress-icon { width: 32px; height: 32px; font-size: 14px; }
+  .progress-title { font-size: 14px; }
+  .progress-subtitle { font-size: 11px; }
+  .progress-percent { font-size: 18px; }
+  .next-tier { font-size: 11px; max-width: 60%; }
+  
+  .progress-actions { flex-direction: column; gap: 8px; margin-top: 12px; }
+  .apply-discount-btn, .view-cart-btn { width: 100%; height: 48px; font-size: 13px; }
+  
+  .tier-label { font-size: 10px; }
+  .progress-milestone { width: 16px; height: 16px; top: -14px; }
+  .milestone-icon { font-size: 8px; }
+  
+  .bundle-review.expanded .bundle-review-items { max-height: 40vh; }
   
   /* Review Items Mobile */
   .bundle-review-item { flex-direction: column; align-items: stretch; }
@@ -208,6 +222,10 @@ body.no-scroll { overflow: hidden !important; }
   .bundle-grid { grid-template-columns: 1fr; gap: 16px; }
   .product-image-container { height: 200px; }
   .modal-image-box { height: 220px; }
+  .bundle-rule-card { min-width: 110px; flex: 1 1 calc(50% - 10px); max-width: none; padding: 12px 8px; }
+  .bundle-rules { gap: 8px; justify-content: center; }
+  .rule-quantity { font-size: 14px; }
+  .rule-discount { font-size: 16px; }
 }
 .rule-tier{font-size:12px;font-weight:600;color:#6366f1;margin-bottom:4px}
 .rule-quantity{font-size:16px;font-weight:800;color:#0f172a;margin-bottom:2px}
@@ -627,7 +645,7 @@ async function fetchProductVariants(productHandle) {
                   value
                 }
                 image {
-                  url(transform: { maxWidth: 200, maxHeight: 200 })
+                  url(transform: { maxWidth: 400, maxHeight: 400 })
                   altText
                 }
               }
@@ -792,7 +810,7 @@ async function fetchAllBundles() {
 
     bundleState.isFetchingBundles = true;
     showLoader('Fetching bundles...');
-    const APP_URL = 'https://suzuki-simplified-coastal-andale.trycloudflare.com';
+    const APP_URL = '{{ app_url }}';
 
     const response = await fetch(`${APP_URL}/api/bundles`, {
       headers: {
@@ -993,7 +1011,7 @@ async function createDiscountCodeAPI(rule, collectionId) {
   try {
     showLoader(`Activating ${rule.discountPercentage}% bundle offer...`);
     updateRuleCardStatus(rule.bundleId, rule.tierIndex || 0, 'creating');
-    const APP_URL = 'https://suzuki-simplified-coastal-andale.trycloudflare.com';
+    const APP_URL = '{{ app_url }}';
 
     const response = await fetch(`${APP_URL}/api/create-discount`, {
       method: 'POST',
