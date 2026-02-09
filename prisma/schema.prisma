@@ -26,7 +26,7 @@ model Session {
   refreshToken        String?
   refreshTokenExpires DateTime?
 
-  @@unique([shop])
+  @@unique([shop, isOnline])
 }
 
 model Bundle {
