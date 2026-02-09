@@ -2,6 +2,7 @@ import { type LoaderFunctionArgs, type ActionFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import type { Bundle, BundleRule } from "../../types/Bundle";
+import { syncBundlesToMetafields } from "../services/bundles.service";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   // Add CORS headers to OPTIONS
@@ -629,102 +630,3 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     });
   }
 };
-
-// Sync bundles to Shopify metafields function
-export async function syncBundlesToMetafields(request: Request) {
-  try {
-    const { admin } = await authenticate.admin(request);
-
-    console.log("🔄 [METAFIELD SYNC] Starting bundle sync to Shopify...");
-
-    // Get all bundles
-    const bundles = await prisma.bundle.findMany();
-
-    if (bundles.length === 0) {
-      console.log("⚠️ [METAFIELD SYNC] No bundles found to sync");
-      return;
-    }
-
-    console.log(`📦 [METAFIELD SYNC] Found ${bundles.length} bundles to sync`);
-
-    // Prepare bundle configurations
-    const bundleConfigs = bundles.map(bundle => {
-      try {
-        return {
-          bundleId: bundle.id,
-          bundleName: bundle.name,
-          collectionId: bundle.collectionId,
-          collectionTitle: bundle.collectionTitle,
-          rules: bundle.rules ? JSON.parse(bundle.rules) : [],
-          createdAt: bundle.createdAt.toISOString(),
-          updatedAt: bundle.updatedAt.toISOString()
-        };
-      } catch (error) {
-        console.error(`❌ [METAFIELD SYNC] Error parsing rules for bundle ${bundle.id}:`, error);
-        return {
-          bundleId: bundle.id,
-          bundleName: bundle.name,
-          collectionId: bundle.collectionId,
-          collectionTitle: bundle.collectionTitle,
-          rules: [],
-          error: "Failed to parse rules"
-        };
-      }
-    });
-
-    const metafieldValue = JSON.stringify({
-      bundles: bundleConfigs,
-      appUrl: process.env.SHOPIFY_APP_URL,
-      syncTimestamp: new Date().toISOString(),
-      syncVersion: "1.0"
-    });
-
-    console.log(`📊 [METAFIELD SYNC] Bundle data prepared: ${bundleConfigs.length} bundles`);
-
-    // Create or update shop metafield
-    try {
-      const response = await admin.graphql(`
-        mutation UpdateShopMetafield($metafields: [MetafieldsSetInput!]!) {
-          metafieldsSet(metafields: $metafields) {
-            metafields {
-              id
-              key
-              namespace
-              value
-            }
-            userErrors {
-              field
-              message
-            }
-          }
-        }
-      `, {
-        variables: {
-          metafields: [{
-            namespace: "bundle_app",
-            key: "rules",
-            type: "json",
-            value: metafieldValue,
-            ownerType: "SHOP"
-          }]
-        }
-      });
-
-      const result: any = await response.json();
-
-      if (result.data?.metafieldsSet?.userErrors?.length > 0) {
-        console.error("❌ [METAFIELD SYNC] Error updating shop metafield:", result.data.metafieldsSet.userErrors);
-      } else {
-        console.log("✅ [METAFIELD SYNC] Successfully synced bundles to Shopify metafield");
-      }
-    } catch (error: any) {
-      console.error("❌ [METAFIELD SYNC] Failed to update shop metafield:", error.message);
-    }
-
-    console.log("✅ [METAFIELD SYNC] Sync completed successfully");
-
-  } catch (error: any) {
-    console.error("❌ [METAFIELD SYNC] Critical error:", error.message);
-    // Don't throw the error to avoid breaking the main flow
-  }
-}
