@@ -75,4 +75,3 @@ CREATE INDEX "DiscountCode_createdAt_idx" ON "DiscountCode"("createdAt");
 
 -- CreateIndex
 CREATE INDEX "DiscountCode_bundleId_ruleIndex_customerId_sessionId_idx" ON "DiscountCode"("bundleId", "ruleIndex", "customerId", "sessionId");
-
