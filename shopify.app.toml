@@ -2,7 +2,7 @@
 
 client_id = "ade218688dac323142420abc22d44fec"
 name = "bundle-app"
-application_url = "https://example.com"
+application_url = "https://bundle-app-c4km.onrender.com"
 embedded = true
 
 [build]
@@ -24,7 +24,7 @@ api_version = "2026-04"
   uri = "/webhooks/app/uninstalled"
 
 [app_proxy]
-url = "https://example.com"
+url = "https://bundle-app-c4km.onrender.com"
 subpath = "bundle-app"
 prefix = "apps"
 
@@ -33,7 +33,7 @@ prefix = "apps"
 scopes = "read_discounts,read_orders,read_price_rules,read_products,write_discounts,write_price_rules,write_products,read_inventory"
 
 [auth]
-redirect_urls = [ "https://example.com/api/auth" ]
+redirect_urls = [ "https://bundle-app-c4km.onrender.com/auth" ]
 
 [extensions.bundle-discount]
 type = "function"
