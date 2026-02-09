@@ -15,7 +15,7 @@ model Session {
   state               String
   isOnline            Boolean   @default(false)
   scope               String?
-  expires             DateTime?
+  expires             TIMESTAMP?
   accessToken         String
   userId              BigInt?
   firstName           String?
@@ -26,7 +26,7 @@ model Session {
   collaborator        Boolean?  @default(false)
   emailVerified       Boolean?  @default(false)
   refreshToken        String?
-  refreshTokenExpires DateTime?
+  refreshTokenExpires TIMESTAMP?
   
   @@unique([shop])
 }
@@ -37,8 +37,8 @@ model Bundle {
   name              String
   collectionId      String
   collectionTitle   String
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         TIMESTAMP @default(now())
+  updatedAt         TIMESTAMP @updatedAt
   rules             String
   discountCodes     Json?
   shopifyDiscountId String?
@@ -54,8 +54,8 @@ model DiscountCode {
   sessionId      String?
   discountNodeId String
   used           Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  expiresAt      DateTime
+  createdAt      TIMESTAMP @default(now())
+  expiresAt      TIMESTAMP
   
   // Indexes for faster queries
   @@index([bundleId, ruleIndex])
