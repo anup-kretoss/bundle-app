@@ -21,7 +21,7 @@ export async function syncBundlesToMetafields(request: Request) {
 
   const metafieldValue = JSON.stringify({
     bundles: bundleConfigs,
-    appUrl: process.env.SHOPIFY_APP_URL,
+    appUrl: process.env.NODE_ENV === "production" ? "https://bundle-app-c4km.onrender.com" : process.env.SHOPIFY_APP_URL,
     syncedAt: new Date().toISOString(),
   });
 
