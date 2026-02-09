@@ -15,7 +15,7 @@ if (
   delete process.env.HOST;
 }
 
-const host = new URL(process.env.SHOPIFY_APP_URL || "")
+const host = new URL(process.env.SHOPIFY_APP_URL || "https://bundle-app-c4km.onrender.com")
   .hostname;
 
 let hmrConfig;
