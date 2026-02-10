@@ -9,7 +9,7 @@ export async function syncBundlesToMetafields(request: Request) {
 
   if (!bundles.length) return;
 
-  const bundleConfigs = bundles.map(bundle => ({
+  const bundleConfigs = bundles.map((bundle: any) => ({
     bundleId: bundle.id,
     bundleName: bundle.name,
     collectionId: bundle.collectionId,
@@ -21,10 +21,19 @@ export async function syncBundlesToMetafields(request: Request) {
 
   const metafieldValue = JSON.stringify({
     bundles: bundleConfigs,
-    appUrl: "https://bundle-app-c4km.onrender.com",
+    appUrl: process.env.SHOPIFY_APP_URL,
     syncedAt: new Date().toISOString(),
   });
+  const shopRes = await admin.graphql(`
+      query {
+        shop {
+          id
+        }
+      }
+    `);
 
+  const shopData = await shopRes.json();
+  const shopId = shopData.data.shop.id;
   await admin.graphql(`
     mutation UpdateShopMetafield($metafields: [MetafieldsSetInput!]!) {
       metafieldsSet(metafields: $metafields) {
@@ -38,7 +47,7 @@ export async function syncBundlesToMetafields(request: Request) {
         key: "rules",
         type: "json",
         value: metafieldValue,
-        ownerType: "SHOP",
+        ownerId: shopId,
       }]
     }
   });
