@@ -1,498 +1,1249 @@
 {% assign collection = collections[block.settings.collection] %}
 {% assign bundle_rules_metafield = shop.metafields.bundle_app.rules.value %}
-{% assign app_url = "https://bundle-app-c4km.onrender.com" %}
+{% assign app_url = bundle_rules_metafield.appUrl | default: "/apps/bundle-app" %}
 
 {% style %}
+/* Reset & Base Styles */
 .bundle-wrapper{max-width:1200px;margin:0 auto;padding:20px 16px 140px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;position:relative}
+
+/* Header Section */
 .bundle-header{text-align:center;margin-bottom:30px}
 .bundle-title{font-size:28px;font-weight:700;margin-bottom:12px;color:#1a202c}
 .bundle-description{font-size:16px;color:#718096;margin-bottom:24px;line-height:1.5}
+
+/* Bundle Discount Badges - Horizontal Layout */
 .bundle-rules-container{margin-bottom:30px}
-.bundle-rules-title{font-size:18px;font-weight:600;margin-bottom:16px;color:#2d3748;text-align:center}
-.bundle-rules{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;padding:0 4px}
-.bundle-rule-card{background:#fff;border-radius:12px;padding:16px 12px;min-width:130px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06);border:1.5px solid #e2e8f0;transition:all .2s ease;flex:1 1 140px;max-width:180px;display:flex;flex-direction:column;justify-content:center;align-items:center}
-.bundle-rule-card.active{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:#667eea;transform:translateY(-2px);box-shadow:0 8px 20px rgba(102,126,234,.3)}
-.bundle-rule-card.active .rule-tier,.bundle-rule-card.active .rule-quantity,.bundle-rule-card.active .rule-discount{color:#fff}
-.bundle-toast{position:fixed;top:16px;right:16px;z-index:999999;padding:12px 16px;border-radius:14px;background:#111827;color:#fff;font-size:14px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;transform:translateY(-12px);transition:all .28s ease;max-width:360px}
-.bundle-toast.show{opacity:1;transform:translateY(0)}
-.bundle-toast.success{background:linear-gradient(135deg,#16a34a,#15803d)}
-.bundle-toast.info{background:linear-gradient(135deg,#111827,#1f2937)}
-.bundle-toast.warning{background:linear-gradient(135deg,#d97706,#b45309)}
-.bundle-toast.error{background:linear-gradient(135deg,#dc2626,#b91c1c)}
-body.no-scroll { overflow: hidden !important; }
-.fixed-progress-bar{position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(255,255,255,0.98);backdrop-filter:blur(10px);box-shadow:0 -10px 30px rgba(0,0,0,0.08);border-top:1px solid rgba(0,0,0,0.05);width:100%;max-width:100vw;transition:all .3s cubic-bezier(0.4, 0, 0.2, 1);padding-bottom:env(safe-area-inset-bottom)}
-.progress-bar-header{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;min-height:60px}
-.progress-header-left{display:flex;align-items:center;gap:12px;flex:1}
-.progress-icon{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;flex-shrink:0}
-.progress-info{flex:1;min-width:0}
-.progress-title-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
-.progress-title{font-size:15px;font-weight:700;color:#2d3748;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.items-count{background:#e2e8f0;color:#4a5568;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;flex-shrink:0}
-.progress-subtitle{font-size:12px;color:#718096;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.progress-header-right{display:flex;align-items:center;gap:8px}
-.toggle-arrow{width:28px;height:28px;border-radius:50%;background:#f7fafc;border:none;color:#4a5568;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;transition:all .2s ease;flex-shrink:0}
-.toggle-arrow:hover{background:#edf2f7}
-.progress-track-container{padding:0 16px 16px;border-top:1px solid #e2e8f0;display:none}
-.fixed-progress-bar.expanded .progress-track-container{display:block}
-.progress-track-wrapper{margin-bottom:16px}
-.progress-stats{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.progress-percent{font-size:20px;font-weight:800;color:#2d3748}
-.next-tier{font-size:12px;color:#718096;text-align:right}
-.next-tier strong{color:#48bb78}
-.progress-track{height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;position:relative;margin:8px 0}
-.progress-fill{height:100%;border-radius:4px;position:absolute;left:0;top:0;transition:width .6s cubic-bezier(.34,1.56,.64,1)}
-.progress-fill.items{background:linear-gradient(90deg,#667eea,#764ba2);z-index:1}
-.progress-fill.discount{background:linear-gradient(90deg,#48bb78,#38a169);z-index:2}
-.progress-milestones{position:relative;height:0}
-.progress-milestone{position:absolute;top:-16px;transform:translateX(-50%);width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:3;transition:all .3s ease}
-.progress-milestone.active{background:#667eea;color:#fff;box-shadow:0 0 0 4px rgba(102,126,234,.2)}
-.progress-milestone.unlocked{background:#48bb78;color:#fff}
-.progress-milestone.locked{background:#cbd5e0;color:#4a5568}
-.milestone-icon{font-size:10px}
-.tier-labels{display:flex;justify-content:space-between;position:relative;margin-top:24px}
-.tier-label{position:absolute;top:0;transform:translateX(-50%);font-size:11px;font-weight:600;color:#718096;white-space:nowrap}
-.tier-label.active{color:#667eea;font-weight:700}
-.tier-label.achieved{color:#48bb78;font-weight:600}
-.progress-actions{display:flex;gap:10px;margin-top:16px}
-.apply-discount-btn{flex:1;padding:12px 16px;background:linear-gradient(135deg,#48bb78,#38a169);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s ease}
-.apply-discount-btn:disabled{background:#cbd5e0;cursor:not-allowed;opacity:.7}
-.apply-discount-btn:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(72,187,120,.25)}
-.view-cart-btn{padding:12px 20px;background:#edf2f7;color:#4a5568;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s ease}
-.view-cart-btn:hover{background:#e2e8f0}
-.review-bundle-btn{display:none !important}
-.review-bundle-btn:disabled{background:#cbd5e0;cursor:not-allowed}
-.review-bundle-btn:not(:disabled):hover{background:#764ba2;transform:translateY(-1px)}
-.review-bundle-btn.active{background:#4a5568}
-.bundle-review{margin-top:14px;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;transition:all .3s ease;display:none}
-.bundle-review.active{display:block}
-.bundle-review-header{padding:12px 16px;font-size:14px;font-weight:800;color:#2d3748;background:#f7fafc;border-bottom:1px solid #e2e8f0;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
-.review-toggle-arrow{transition:transform .3s ease}
-.bundle-review.expanded .review-toggle-arrow{transform:rotate(180deg)}
-.bundle-review-items{max-height:0;overflow:hidden;padding:0 8px;transition:max-height .3s ease-out, padding .3s ease}
-.bundle-review.expanded .bundle-review-items{max-height:350px;overflow-y:auto;padding:8px}
-.bundle-review-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border-bottom:1px solid #edf2f7;background:#fff;border-radius:8px;margin-bottom:8px;transition:all .2s ease}
-.bundle-review-item:last-child{border-bottom:none;margin-bottom:0}
-.bundle-review-item:hover{background:#f8fafc;box-shadow:0 2px 8px rgba(0,0,0,.05)}
-.bundle-review-item.out-of-stock{opacity:.7;background:#fff5f5;border:1px solid #fed7d7}
-.out-of-stock-badge{background:#fed7d7;color:#742a2a;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;margin-left:8px}
-.bundle-review-left{display:flex;gap:12px;align-items:center;min-width:0;flex:1}
-.bundle-review-thumb{width:50px;height:50px;border-radius:10px;background:#f7fafc;overflow:hidden;border:1px solid #e2e8f0;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.bundle-review-thumb img{width:100%;height:100%;object-fit:cover}
-.bundle-review-thumb .no-image{font-size:10px;color:#718096;text-align:center;padding:4px}
-.bundle-review-meta{min-width:0;flex:1}
-.bundle-review-title{font-size:14px;font-weight:700;color:#2d3748;line-height:1.3;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.bundle-review-variant{font-size:12px;color:#718096;font-weight:500}
-.bundle-review-price{font-size:14px;font-weight:800;color:#16a34a;margin-top:4px}
-.bundle-review-right{display:flex;align-items:center;gap:12px}
-.qty-controls{display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:4px;min-width:120px}
-.qty-btn{width:32px;height:32px;border-radius:10px;border:none;cursor:pointer;background:#f7fafc;font-weight:900;color:#2d3748;display:flex;align-items:center;justify-content:center;transition:all .2s ease;font-size:16px}
-.qty-btn:hover{background:#edf2f7;transform:scale(1.05)}
-.qty-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.qty-input-wrapper{position:relative;flex:1}
-.qty-input{width:100%;height:32px;border-radius:8px;border:1.5px solid #e2e8f0;text-align:center;font-weight:700;font-size:14px;outline:none;background:#fff;color:#2d3748;padding:0 8px;transition:all .2s ease}
-.qty-input:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
-.qty-input:disabled{background:#f7fafc;color:#a0aec0;cursor:not-allowed}
-.qty-status{position:absolute;top:100%;left:0;right:0;font-size:9px;color:#718096;text-align:center;margin-top:2px;display:none}
-.remove-item-btn{padding:8px 12px;background:#fed7d7;color:#742a2a;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .2s ease}
-.remove-item-btn:hover{background:#feb2b2;transform:translateY(-1px)}
+.bundle-rules{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;padding:0 4px}
+
+.bundle-rule-badge{
+  background:#fff;
+  border:2px solid #e2e8f0;
+  border-radius:12px;
+  padding:8px 20px;
+  font-size:14px;
+  font-weight:700;
+  color:#2d3748;
+  transition:all .2s ease;
+  cursor:default;
+  white-space:nowrap;
+  min-width:120px;
+  text-align:center;
+}
+
+.bundle-rule-badge.active{
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  color:#fff;
+  border-color:#667eea;
+  transform:scale(1.05);
+  box-shadow:0 4px 12px rgba(102,126,234,.3);
+}
+
+/* Product Grid */
 .products-section-header{font-size:22px;font-weight:700;color:#2d3748;margin-bottom:20px;text-align:center}
-.bundle-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;margin-top:20px}
-.bundle-product{border:1.5px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center;background:#fff;transition:all .3s ease;position:relative;overflow:hidden;display:flex;flex-direction:column;height:100%;cursor:pointer}
-.bundle-product:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.08);border-color:#667eea}
-.bundle-product.discounted{border-color:#48bb78}
-.product-badge{position:absolute;top:10px;right:10px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;z-index:2;letter-spacing:.5px}
-.discount-badge-small{position:absolute;top:10px;left:10px;background:linear-gradient(135deg,#48bb78,#38a169);color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;z-index:2;letter-spacing:.5px}
-.out-of-stock-overlay{position:absolute;inset:0;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;z-index:1;border-radius:12px}
-.out-of-stock-text{background:#fed7d7;color:#742a2a;padding:8px 16px;border-radius:8px;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
-.product-image-container{width:100%;height:200px;overflow:hidden;border-radius:8px;margin-bottom:16px;background:#f7fafc;display:flex;align-items:center;justify-content:center;position:relative}
-.product-image{width:100%;height:100%;object-fit:contain;transition:transform .3s ease}
+.bundle-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;margin-top:20px}
+
+/* Product Card */
+.bundle-product{
+  border:1.5px solid #e2e8f0;
+  border-radius:12px;
+  padding:16px;
+  text-align:center;
+  background:#fff;
+  transition:all .3s ease;
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  height:100%;
+  cursor:pointer;
+}
+
+.bundle-product:hover{
+  transform:translateY(-3px);
+  box-shadow:0 8px 20px rgba(0,0,0,.08);
+  border-color:#667eea;
+}
+
+.out-of-stock-overlay{
+  position:absolute;
+  inset:0;
+  background:rgba(255,255,255,.9);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:1;
+  border-radius:12px;
+}
+
+.out-of-stock-text{
+  background:#fed7d7;
+  color:#742a2a;
+  padding:8px 16px;
+  border-radius:8px;
+  font-weight:700;
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+}
+
+.product-image-container{
+  width:100%;
+  height:200px;
+  overflow:hidden;
+  border-radius:8px;
+  margin-bottom:16px;
+  background:#f7fafc;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+}
+
+.product-image{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  transition:transform .3s ease;
+}
+
 .bundle-product:hover .product-image{transform:scale(1.05)}
-.product-title{font-size:16px;font-weight:700;color:#2d3748;margin-bottom:12px;line-height:1.4;flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:44px}
+
+.product-title{
+  font-size:16px;
+  font-weight:700;
+  color:#2d3748;
+  margin-bottom:12px;
+  line-height:1.4;
+  flex:1;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  min-height:44px;
+}
+
 .price-container{margin-bottom:16px}
 .price-wrapper{display:flex;align-items:baseline;justify-content:center;gap:8px;flex-wrap:wrap}
 .price-original{font-size:17px;font-weight:800;color:#2d3748}
 .price-original.cut{text-decoration:line-through;color:#a0aec0;font-size:15px;font-weight:600}
-.price-discounted{font-size:22px;font-weight:900;color:#e53e3e}
-.view-details-btn{width:100%;padding:14px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s ease;letter-spacing:.3px;display:flex;align-items:center;justify-content:center;gap:8px;position:relative;z-index:2}
-.bundle-modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,0.8);backdrop-filter:blur(8px);z-index:999999;display:none;align-items:center;justify-content:center;padding:20px;animation:fadeIn 0.3s ease;transition:all 0.3s ease}
+.price-discounted{font-size:22px;font-weight:900;color:#16a34a}
+
+/* Modal Styles */
+.bundle-modal-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,0.8);
+  backdrop-filter:blur(8px);
+  z-index:999999;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  animation:fadeIn 0.3s ease;
+}
+
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
-.bundle-modal{width:100%;max-width:900px;max-height:85vh;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.1);position:relative;animation:slideUp 0.4s cubic-bezier(0.165,0.84,0.44,1);display:flex;flex-direction:column;transition:all 0.3s ease}
+.bundle-modal{
+  width:100%;
+  max-width:1000px;
+  max-height:90vh;
+  background:#fff;
+  border-radius:24px;
+  overflow:hidden;
+  box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);
+  position:relative;
+  animation:slideUp 0.4s cubic-bezier(0.165,0.84,0.44,1);
+  display:flex;
+  flex-direction:column;
+}
+
 @keyframes slideUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
 
-.bundle-modal-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 24px;border-bottom:1px solid #f1f5f9;background:#fff;z-index:10}
-.bundle-modal-title{font-size:20px;font-weight:800;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;letter-spacing:-0.025em}
-.bundle-modal-close{border:none;cursor:pointer;font-size:18px;width:36px;height:36px;border-radius:10px;background:#f8fafc;color:#64748b;display:flex;align-items:center;justify-content:center;transition:all 0.2s ease}
-.bundle-modal-close:hover{background:#f1f5f9;color:#0f172a;transform:rotate(90deg)}
+.bundle-modal-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:20px 24px;
+  border-bottom:1px solid #f1f5f9;
+  background:#fff;
+}
 
-.bundle-modal-body{display:grid;grid-template-columns:1.2fr 1fr;gap:32px;padding:24px;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
-.bundle-modal-body::-webkit-scrollbar{width:6px}
-.bundle-modal-body::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:10px}
+.bundle-modal-title{
+  font-size:20px;
+  font-weight:800;
+  color:#0f172a;
+  flex:1;
+}
 
-.modal-image-box{border-radius:20px;border:1px solid #f1f5f9;background:#f8fafc;height:450px;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:24px;position:relative}
-.modal-image-box img{width:100%;height:100%;object-fit:contain;transition:transform 0.5s ease}
-.modal-image-box:hover img{transform:scale(1.05)}
+.bundle-modal-close{
+  border:none;
+  cursor:pointer;
+  font-size:18px;
+  width:36px;
+  height:36px;
+  border-radius:10px;
+  background:#f8fafc;
+  color:#64748b;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:all 0.2s ease;
+}
 
-.modal-out-of-stock{position:absolute;inset:0;background:rgba(255,255,255,0.8);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:2}
-.modal-out-of-stock-badge{background:#ef4444;color:#fff;padding:12px 24px;border-radius:12px;font-weight:800;font-size:14px;text-transform:uppercase;letter-spacing:0.05em;box-shadow:0 10px 15px -3px rgba(239,68,68,0.3)}
+.bundle-modal-close:hover{
+  background:#f1f5f9;
+  color:#0f172a;
+  transform:rotate(90deg);
+}
 
+.bundle-modal-body{
+  display:grid;
+  grid-template-columns:450px 1fr;
+  gap:32px;
+  padding:24px;
+  overflow-y:auto;
+  flex:1;
+}
+
+/* Image Gallery Section */
+.modal-image-section{display:flex;flex-direction:column;gap:16px}
+
+.modal-main-image{
+  border-radius:20px;
+  border:1px solid #f1f5f9;
+  background:#f8fafc;
+  height:400px;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  position:relative;
+}
+
+.modal-main-image img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  transition:transform 0.3s ease;
+}
+
+/* Carousel Styles */
+.modal-carousel-container{
+  position:relative;
+  width:100%;
+  overflow:hidden;
+  padding:0 40px;
+}
+
+.modal-carousel-wrapper{
+  width:100%;
+  overflow:hidden;
+  position:relative;
+}
+
+.modal-carousel{
+  display:flex;
+  gap:12px;
+  transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width:max-content;
+}
+
+.modal-thumbnail{
+  flex:0 0 auto;
+  width:80px;
+  height:80px;
+  border-radius:12px;
+  border:2px solid #e2e8f0;
+  background:#fff;
+  overflow:hidden;
+  cursor:pointer;
+  transition:all 0.2s ease;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px;
+}
+
+.modal-thumbnail:hover{
+  border-color:#667eea;
+  transform:scale(1.05);
+}
+
+.modal-thumbnail.active{
+  border-color:#667eea;
+  box-shadow:0 0 0 3px rgba(102,126,234,.2);
+}
+
+.modal-thumbnail.out-of-stock{
+  opacity:0.4;
+  cursor:not-allowed;
+}
+
+.modal-thumbnail img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+}
+
+.carousel-btn{
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.95);
+  border:1px solid #e2e8f0;
+  color:#2d3748;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  z-index:10;
+  transition:all 0.2s ease;
+  font-weight:bold;
+  font-size:16px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+
+.carousel-btn:hover:not(:disabled){
+  background:#fff;
+  box-shadow:0 4px 12px rgba(0,0,0,0.15);
+  border-color:#667eea;
+  color:#667eea;
+}
+
+.carousel-btn.prev{
+  left:8px;
+}
+
+.carousel-btn.next{
+  right:8px;
+}
+
+.carousel-btn:disabled{
+  opacity:0.3;
+  cursor:not-allowed;
+  background:rgba(255,255,255,0.7);
+}
+
+/* Product Info Section */
 .modal-info{display:flex;flex-direction:column;gap:20px}
 .modal-info h3{font-size:26px;font-weight:800;color:#0f172a;line-height:1.2;margin:0}
+
 .modal-price-container{padding-bottom:16px;border-bottom:1px solid #f1f5f9}
 .modal-price{font-size:30px;font-weight:800;color:#059669;display:flex;align-items:center;gap:12px}
 .modal-price-original{font-size:20px;color:#94a3b8;text-decoration:line-through;font-weight:500}
 
-.modal-inventory-info{font-size:13px;font-weight:700;padding:8px 12px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;width:fit-content}
+.modal-discount-badge{
+  background:linear-gradient(135deg,#48bb78,#38a169);
+  color:#fff;
+  padding:6px 12px;
+  border-radius:8px;
+  font-size:12px;
+  font-weight:700;
+  display:inline-block;
+  margin-top:8px;
+}
+
+.modal-inventory-info{
+  font-size:13px;
+  font-weight:700;
+  padding:8px 12px;
+  border-radius:8px;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  width:fit-content;
+}
+
 .modal-inventory-info.in-stock{background:#ecfdf5;color:#059669}
 .modal-inventory-info.low-stock{background:#fffbeb;color:#d97706}
 .modal-inventory-info.out-of-stock{background:#fef2f2;color:#dc2626}
 
-.modal-option label{display:block;font-size:12px;font-weight:700;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em}
-.modal-option select{width:100%;height:48px;border-radius:12px;border:2px solid #e2e8f0;padding:0 16px;font-weight:600;background:#fff;color:#0f172a;transition:all 0.2s ease}
-.modal-option select:focus{border-color:#6366f1;outline:none;box-shadow:0 0 0 4px rgba(99,102,241,0.1)}
+/* Variant Selection as Boxes */
+.modal-variants-section{display:flex;flex-direction:column;gap:12px}
+.modal-variants-label{
+  font-size:12px;
+  font-weight:700;
+  color:#64748b;
+  text-transform:uppercase;
+  letter-spacing:0.05em;
+}
 
-.modal-qty{display:flex;align-items:center;justify-content:space-between;padding:16px;background:#f8fafc;border-radius:16px;border:1px solid #f1f5f9}
-.modal-qty label{font-size:14px;font-weight:700;color:#334155}
-.modal-qty-controls{display:flex;align-items:center;gap:12px}
-.modal-qty-btn{width:40px;height:40px;text-align:center;border-radius:10px;border:1px solid #e2e8f0;background:#fff;color:#0f172a;font-weight:800;font-size:18px;cursor:pointer;transition:all 0.2s ease}
-.modal-qty-btn:hover:not(:disabled){border-color:#6366f1;color:#6366f1;background:#f5f3ff}
-.modal-qty-input{width:50px;text-align:center;font-weight:800;font-size:16px;border:none;background:transparent;color:#0f172a}
+.modal-variant-boxes{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  max-width:450px;
+}
 
-.bundle-modal-footer{padding:20px 24px;border-top:1px solid #f1f5f9;background:#fff;z-index:10}
-.modal-actions{display:flex;gap:16px}
-.modal-add-btn{flex:2;height:56px;border-radius:16px;border:none;cursor:pointer;font-weight:800;color:#fff;background:linear-gradient(135deg,#6366f1,#8b5cf6);font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px;transition:all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)}
-.modal-add-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 25px -5px rgba(99,102,241,0.4)}
-.modal-add-btn:disabled{background:#e2e8f0;color:#94a3b8;cursor:not-allowed}
-.modal-view-product{flex:1;height:56px;text-align:center;border-radius:16px;border:2px solid #e2e8f0;background:#fff;color:#475569;font-weight:700;font-size:14px;transition:all 0.2s ease}
-.modal-view-product:hover{background:#f8fafc;border-color:#cbd5e1}
+.modal-variant-box{
+  padding:10px 16px;
+  border:2px solid #e2e8f0;
+  border-radius:10px;
+  background:#fff;
+  text-align:center;
+  cursor:pointer;
+  transition:all 0.2s ease;
+  font-weight:600;
+  color:#2d3748;
+  font-size:13px;
+  white-space:nowrap;
+  flex:0 0 auto;
+}
 
-.bundle-loader-overlay{position:fixed;inset:0;background:rgba(15,23,42,0.6);backdrop-filter:blur(4px);z-index:9999999;display:none;align-items:center;justify-content:center}
-.bundle-loader-box{background:#fff;padding:32px;border-radius:24px;text-align:center;min-width:240px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1)}
-.bundle-spinner{width:48px;height:48px;border:4px solid #f1f5f9;border-top-color:#6366f1;border-radius:50%;margin:0 auto 20px;animation:spin 1s cubic-bezier(0.6, 0.2, 0.4, 0.8) infinite}
+.modal-variant-box:hover:not(.out-of-stock){
+  border-color:#6366f1;
+  background:#f5f3ff;
+  color:#6366f1;
+}
+
+.modal-variant-box.active{
+  border-color:#667eea;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  color:#fff;
+  box-shadow:0 4px 8px rgba(102,126,234,.3);
+}
+
+.modal-variant-box.out-of-stock{
+  opacity:0.4;
+  cursor:not-allowed;
+  background:#f8fafc;
+}
+
+/* Modal Footer with Quantity and Add Button */
+.bundle-modal-footer{
+  padding:20px 24px;
+  border-top:1px solid #f1f5f9;
+  background:#fff;
+  display:flex;
+  align-items:center;
+  gap:20px;
+}
+
+.modal-qty-section{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex:0 0 auto;
+}
+
+.modal-qty-label{
+  font-size:14px;
+  font-weight:700;
+  color:#334155;
+  white-space:nowrap;
+}
+
+.modal-qty-controls{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background:#f8fafc;
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  padding:4px;
+}
+
+.modal-qty-btn{
+  width:36px;
+  height:36px;
+  border-radius:8px;
+  border:1px solid #e2e8f0;
+  background:#fff;
+  color:#0f172a;
+  font-weight:800;
+  font-size:16px;
+  cursor:pointer;
+  transition:all 0.2s ease;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.modal-qty-btn:hover:not(:disabled){
+  border-color:#6366f1;
+  color:#6366f1;
+  background:#f5f3ff;
+}
+
+.modal-qty-btn:disabled{
+  opacity:0.4;
+  cursor:not-allowed;
+  background:#f1f5f9;
+}
+
+.modal-qty-input{
+  width:50px;
+  text-align:center;
+  font-weight:700;
+  font-size:16px;
+  border:none;
+  background:transparent;
+  color:#0f172a;
+  outline:none;
+}
+
+.modal-add-btn{
+  flex:1;
+  height:56px;
+  border-radius:16px;
+  border:none;
+  cursor:pointer;
+  font-weight:800;
+  color:#fff;
+  background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  font-size:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  transition:all 0.3s ease;
+  padding:0 24px;
+}
+
+.modal-add-btn:hover:not(:disabled){
+  transform:translateY(-2px);
+  box-shadow:0 10px 25px -5px rgba(99,102,241,0.4);
+}
+
+.modal-add-btn:disabled{
+  background:#e2e8f0;
+  color:#94a3b8;
+  cursor:not-allowed;
+}
+
+/* Bottom Bar */
+.fixed-bottom-bar{
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  z-index:9998;
+  background:rgba(255,255,255,0.98);
+  backdrop-filter:blur(10px);
+  box-shadow:0 -4px 20px rgba(0,0,0,0.1);
+  border-top:1px solid rgba(0,0,0,0.08);
+  transition:all .3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding-bottom:env(safe-area-inset-bottom);
+  transform:translateY(100%);
+}
+
+.fixed-bottom-bar.visible{
+  transform:translateY(0);
+}
+
+.bottom-bar-content{
+  max-width:1200px;
+  margin:0 auto;
+  padding:10px 20px;
+}
+
+.bottom-bar-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  cursor:pointer;
+}
+
+.bottom-bar-left{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex:1;
+}
+
+.bottom-bar-icon{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-size:18px;
+  flex-shrink:0;
+}
+
+.bottom-bar-info{flex:1;min-width:0}
+.bottom-bar-title{font-size:16px;font-weight:700;color:#2d3748;margin-bottom:4px}
+.bottom-bar-subtitle{font-size:13px;color:#718096}
+.bottom-bar-subtitle.discount-active{color:#16a34a;font-weight:600}
+
+.review-close-btn{
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  width: 28px;
+  height: 28px;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 50%;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 20;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.review-close-btn:hover{
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+
+.bottom-bar-header{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  width: 100%;
+}
+
+.discount-status-bar{
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #059669;
+  background: #ecfdf5;
+  padding: 6px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  display: none; /* Hidden by default */
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.checkout-btn{
+  width: 100%;
+  height: 44px;
+  background: #62BEBA;
+  border:none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 800;
+  color:#fff;
+  cursor:pointer;
+  transition:all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.btn-badge {
+  position: absolute;
+  left: 20px;
+  background: rgba(255,255,255,0.2);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+  border: 1px solid rgba(255,255,255,0.4);
+}
+
+.checkout-btn:hover:not(:disabled){
+  transform:translateY(-2px);
+  box-shadow:0 8px 20px rgba(98, 190, 186, 0.3);
+  filter: brightness(1.05);
+}
+
+.checkout-btn:disabled{
+  background:#cbd5e0;
+  cursor:not-allowed;
+  opacity:0.7;
+}
+
+/* Bundle Review Section */
+.bundle-review-section{
+  position:absolute;
+  bottom:100%;
+  left:0;
+  right:0;
+  background:#fff;
+  max-height:0;
+  overflow:hidden;
+  transition:all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border-top:1px solid rgba(0,0,0,0.08);
+  box-shadow:0 -10px 30px rgba(0,0,0,0.08);
+  z-index:10;
+  border-radius:16px 16px 0 0;
+}
+
+.bundle-review-section.expanded{
+  max-height:340px; /* Approximately 4 items + padding */
+  padding:12px 0 0;
+  overflow-y:auto;
+  scrollbar-width:thin;
+}
+
+.bundle-review-section::-webkit-scrollbar{
+  width:4px;
+}
+
+.bundle-review-section::-webkit-scrollbar-thumb{
+  background:#cbd5e1;
+  border-radius:10px;
+}
+
+.bundle-review-items{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  padding:0 4px;
+}
+
+.bundle-review-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:6px 12px;
+  background:#fff;
+  border-radius:8px;
+  border:1px solid #f1f5f9;
+  transition:background 0.2s ease;
+}
+
+.bundle-review-item:hover{
+  background:#f8fafc;
+}
+
+.bundle-review-thumb{
+  width:50px;
+  height:50px;
+  border-radius:6px;
+  background:#fff;
+  border:1px solid #f1f5f9;
+  overflow:hidden;
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:3px;
+}
+
+.bundle-review-thumb img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+}
+
+.bundle-review-info{flex:1;min-width:0}
+.bundle-review-title{font-size:13px;font-weight:700;color:#0f172a;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bundle-review-variant{font-size:11px;color:#64748b}
+.bundle-review-price{font-size:13px;font-weight:700;color:#059669;margin-top:2px}
+.bundle-review-price.original{color:#94a3b8;text-decoration:line-through;font-size:11px;font-weight:500}
+
+.bundle-review-qty{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  background:#f8fafc;
+  border:1px solid #f1f5f9;
+  border-radius:8px;
+  padding:3px;
+}
+
+.qty-btn-small{
+  width:24px;
+  height:24px;
+  border-radius:5px;
+  border:1px solid #e2e8f0;
+  background:#fff;
+  color:#0f172a;
+  font-weight:700;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:all 0.2s ease;
+  font-size:14px;
+}
+
+.qty-btn-small:hover:not(:disabled){
+  background:#edf2f7;
+  transform:scale(1.1);
+}
+
+.qty-btn-small:disabled{
+  opacity:0.4;
+  cursor:not-allowed;
+}
+
+.qty-display{
+  min-width:24px;
+  text-align:center;
+  font-weight:700;
+  font-size:12px;
+}
+
+.remove-btn{
+  padding:6px 10px;
+  background:transparent;
+  color:#ef4444;
+  border:1px solid #fee2e2;
+  border-radius:8px;
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all 0.2s ease;
+  display:flex;
+  align-items:center;
+  gap:4px;
+  white-space:nowrap;
+}
+
+.remove-btn:hover{
+  background:#fef2f2;
+}
+
+/* Toast Notification */
+.bundle-toast{
+  position:fixed;
+  top:16px;
+  right:16px;
+  z-index:999999;
+  padding:12px 20px;
+  border-radius:14px;
+  background:#111827;
+  color:#fff;
+  font-size:14px;
+  font-weight:600;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);
+  opacity:0;
+  transform:translateY(-12px);
+  transition:all .28s ease;
+  max-width:320px;
+}
+
+.bundle-toast.show{opacity:1;transform:translateY(0)}
+.bundle-toast.success{background:linear-gradient(135deg,#16a34a,#15803d)}
+.bundle-toast.error{background:linear-gradient(135deg,#dc2626,#b91c1c)}
+.bundle-toast.warning{background:linear-gradient(135deg,#d97706,#b45309)}
+
+/* Loader */
+.bundle-loader-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,0.6);
+  backdrop-filter:blur(4px);
+  z-index:9999999;
+  display:none;
+  align-items:center;
+  justify-content:center;
+}
+
+.bundle-loader-box{
+  background:#fff;
+  padding:32px;
+  border-radius:24px;
+  text-align:center;
+  min-width:240px;
+  box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);
+}
+
+.bundle-spinner{
+  width:48px;
+  height:48px;
+  border:4px solid #f1f5f9;
+  border-top-color:#6366f1;
+  border-radius:50%;
+  margin:0 auto 20px;
+  animation:spin 1s ease infinite;
+}
+
 @keyframes spin{100%{transform:rotate(360deg)}}
 
-/* Mobile & Tablet Responsiveness */
-@media screen and (max-width: 1024px) {
-  .bundle-modal { max-width: 800px; }
-  .bundle-modal-body { gap: 24px; }
-  .modal-image-box { height: 350px; }
-}
-
-@media screen and (max-width: 768px) {
-  .bundle-modal-overlay { padding: 0; align-items: flex-end; }
-  .bundle-modal { 
-    max-width: 100%; 
-    max-height: 92vh; 
-    border-radius: 32px 32px 0 0; 
-    animation: slideUpMobile 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+/* Mobile Responsiveness */
+@media screen and (max-width: 768px){
+  .bundle-modal{
+    max-height:92vh;
+    border-radius:24px 24px 0 0;
   }
-  @keyframes slideUpMobile { from { transform: translateY(100%); } to { transform: translateY(0); } }
   
-  .bundle-modal-body { grid-template-columns: 1fr; padding: 20px; gap: 24px; }
-  .modal-image-box { height: 280px; border-radius: 16px; }
-  .modal-info h3 { font-size: 22px; }
-  .modal-price { font-size: 26px; }
-  .bundle-modal-footer { padding: 16px 20px calc(16px + env(safe-area-inset-bottom)); position: sticky; bottom: 0; box-shadow: 0 -10px 20px rgba(0,0,0,0.05); }
-  .modal-actions { flex-direction: column; gap: 12px; }
-  .modal-add-btn, .modal-view-product { height: 50px; width: 100%; }
+  .bundle-modal-body{
+    grid-template-columns:1fr;
+    gap:20px;
+  }
   
-  /* Progress Bar Mobile Improvements */
-  .progress-bar-header { min-height: 54px; padding: 8px 16px; }
-  .progress-icon { width: 32px; height: 32px; font-size: 14px; }
-  .progress-title { font-size: 14px; }
-  .progress-subtitle { font-size: 11px; }
-  .progress-percent { font-size: 18px; }
-  .next-tier { font-size: 11px; max-width: 60%; }
+  .modal-main-image{height:300px}
   
-  .progress-actions { flex-direction: column; gap: 8px; margin-top: 12px; }
-  .apply-discount-btn, .view-cart-btn { width: 100%; height: 48px; font-size: 13px; }
+  .bundle-modal-footer{
+    flex-direction:row;
+    flex-wrap:wrap;
+    gap:12px;
+    padding:16px 20px;
+  }
   
-  .tier-label { font-size: 10px; }
-  .progress-milestone { width: 16px; height: 16px; top: -14px; }
-  .milestone-icon { font-size: 8px; }
+  .modal-qty-section{
+    flex:1;
+    min-width:140px;
+    justify-content:center;
+  }
   
-  .bundle-review.expanded .bundle-review-items { max-height: 40vh; }
+  .modal-add-btn{
+    flex:2;
+    min-width:200px;
+  }
   
-  /* Review Items Mobile */
-  .bundle-review-item { flex-direction: column; align-items: stretch; }
-  .bundle-review-right { width: 100%; justify-content: space-between; }
+  .bottom-bar-header{
+    flex-direction:column;
+    align-items:stretch;
+    gap:8px;
+  }
+  
+  .bottom-bar-left{
+    flex-direction:row;
+    align-items:center;
+  }
+  
+  .bottom-bar-actions{
+    width:100%;
+  }
+  
+  .checkout-btn{
+    width:100%;
+    text-align:center;
+  }
+  
+  .bundle-review-section.expanded{
+    max-height:50vh;
+  }
+  
+  .bundle-review-item{
+    flex-direction:column;
+    align-items:stretch;
+    gap:8px;
+  }
+  
+  .bundle-review-right{
+    width:100%;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
 }
 
-@media screen and (max-width: 480px) {
-  .bundle-grid { grid-template-columns: 1fr; gap: 16px; }
-  .product-image-container { height: 200px; }
-  .modal-image-box { height: 220px; }
-  .bundle-rule-card { min-width: 110px; flex: 1 1 calc(50% - 10px); max-width: none; padding: 12px 8px; }
-  .bundle-rules { gap: 8px; justify-content: center; }
-  .rule-quantity { font-size: 14px; }
-  .rule-discount { font-size: 16px; }
+@media screen and (max-width: 480px){
+  .bundle-grid{
+    grid-template-columns:1fr;
+    gap:16px;
+  }
+  
+  .bundle-rules{
+    gap:8px;
+  }
+  
+  .bundle-rule-badge{
+    padding:6px 12px;
+    font-size:12px;
+    min-width:100px;
+  }
+  
+  .modal-variant-box{
+    padding:8px 12px;
+    font-size:12px;
+  }
+  
+  .modal-qty-section{
+    flex-direction:column;
+    align-items:stretch;
+    gap:8px;
+  }
+  
+  .modal-qty-controls{
+    justify-content:center;
+  }
 }
-.rule-tier{font-size:12px;font-weight:600;color:#6366f1;margin-bottom:4px}
-.rule-quantity{font-size:16px;font-weight:800;color:#0f172a;margin-bottom:2px}
-.rule-discount{font-size:18px;font-weight:900;color:#059669;margin-bottom:8px}
-.rule-status{font-size:11px;font-weight:700;padding:4px 8px;border-radius:6px;display:inline-block}
-.rule-status.locked{background:#f8fafc;color:#64748b}
-.rule-status.unlocked{background:#ecfdf5;color:#059669}
-.rule-status.active{background:#6366f1;color:#fff}
-.rule-code{font-size:10px;font-family:monospace;background:rgba(255,255,255,0.2);padding:2px 4px;border-radius:4px;margin-top:4px;display:none}
+
+body.modal-open{overflow:hidden}
 {% endstyle %}
 
-
 {% if collection %}
-<div class="bundle-wrapper"
-     data-collection-id="{{ collection.id }}"
-     data-collection-handle="{{ collection.handle }}"
-     data-collection-title="{{ collection.title | escape }}">
-
+<div class="bundle-wrapper">
   <div class="bundle-header">
-    <h2 class="bundle-title">{{ collection.title }} Bundle Deal</h2>
-    <p class="bundle-description">Buy more, save more! Get exclusive discounts when you purchase multiple items.</p>
+    <h1 class="bundle-title"># Share God's Word This Year!</h1>
+    <p class="bundle-description">Choose your bracelets & discounts are automatically applied as you build your pack!</p>
+  </div>
 
-    <div class="bundle-rules-container">
-      <h3 class="bundle-rules-title">Bundle Discounts</h3>
-      <div class="bundle-rules" id="bundleRulesContainer">
-        <!-- filled by JS -->
-      </div>
+  <!-- Bundle Discount Badges -->
+  <div class="bundle-rules-container">
+    <div class="bundle-rules" id="bundleRules">
+      <div class="bundle-rule-badge">Loading bundle rules...</div>
     </div>
   </div>
 
-  <h3 class="products-section-header">Select Your Items</h3>
-
-  <div class="bundle-grid" id="bundleProductsGrid">
-    {% for product in collection.products limit: 8 %}
-      {% assign first_variant = product.selected_or_first_available_variant %}
-      <div class="bundle-product"
-           data-product-handle="{{ product.handle }}"
-           data-product-id="{{ product.id }}"
-           data-variant-id="{{ first_variant.id }}"
-           data-price="{{ product.price | money_without_currency | replace: ',', '' }}"
-           data-compare-at-price="{{ product.compare_at_price | money_without_currency | replace: ',', '' }}"
-           data-title="{{ product.title | escape }}"
-           onclick="openProductModal('{{ product.handle }}')">
-
-        <div class="product-badge">Bundle</div>
-        <div class="discount-badge-small" id="discountBadge-{{ product.id }}" style="display:none;"></div>
-
-        {% unless first_variant.available %}
-          <div class="out-of-stock-overlay">
-            <div class="out-of-stock-text">Out of Stock</div>
-          </div>
-        {% endunless %}
-
-        <div class="product-image-container">
-          {% if product.featured_image %}
-            <img
-              src="{{ product.featured_image | image_url: width: 280 }}"
-              alt="{{ product.featured_image.alt | escape }}"
-              class="product-image"
-              width="280"
-              height="280"
-              loading="lazy"
-            >
-          {% else %}
-            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#718096;font-size:14px;">
-              No Image
+  <!-- Product Grid -->
+  <div class="products-section">
+    <h2 class="products-section-header">Select Your Items</h2>
+    <div class="bundle-grid" id="productGrid">
+      {% for product in collection.products limit: 24 %}
+        {% assign first_variant = product.selected_or_first_available_variant %}
+        <div class="bundle-product" data-product-id="{{ product.id }}" onclick="openProductModal({{ product.id }})">
+          {% unless first_variant.available %}
+            <div class="out-of-stock-overlay">
+              <div class="out-of-stock-text">Out of Stock</div>
             </div>
-          {% endif %}
-        </div>
-
-        <h3 class="product-title">{{ product.title }}</h3>
-
-        <div class="price-container">
-          <div class="price-wrapper" id="price-{{ product.id }}">
-            <div class="price-original">
-              {{ product.price | money }}
+          {% endunless %}
+          
+          <div class="product-image-container">
+            {% if product.featured_image %}
+              <img src="{{ product.featured_image | img_url: 'medium' }}" alt="{{ product.title }}" class="product-image">
+            {% else %}
+              <div style="color:#718096;font-size:12px">No Image</div>
+            {% endif %}
+          </div>
+          
+          <h3 class="product-title">{{ product.title }}</h3>
+          
+          <div class="price-container">
+            <div class="price-wrapper">
+              <span class="price-original" data-original-price="{{ product.price }}">{{ product.price | money }}</span>
             </div>
           </div>
         </div>
+      {% endfor %}
+    </div>
+  </div>
 
-        <button class="view-details-btn" type="button" {% unless first_variant.available %}disabled{% endunless %}>
-          <span class="btn-icon">🔍</span>
-          <span>{% if first_variant.available %}View Details {% else %}Out of Stock{% endif %}</span>
-        </button>
+  <!-- Product Data (Hidden) -->
+  <div style="display:none" id="productData">
+    {% for product in collection.products limit: 24 %}
+      <div data-product="{{ product.id }}">
+        <div data-title="{{ product.title }}"></div>
+        <div data-price="{{ product.price }}"></div>
+        <div data-available="{{ product.available }}"></div>
+        <div data-image="{% if product.featured_image %}{{ product.featured_image | img_url: 'large' }}{% endif %}"></div>
+        <div data-variants>
+          {% for variant in product.variants %}
+            <div data-variant-id="{{ variant.id }}"
+                 data-variant-title="{{ variant.title }}"
+                 data-variant-price="{{ variant.price }}"
+                 data-variant-available="{{ variant.available }}"
+                 data-variant-image="{% if variant.image %}{{ variant.image | img_url: 'large' }}{% else %}{{ product.featured_image | img_url: 'large' }}{% endif %}">
+            </div>
+          {% endfor %}
+        </div>
       </div>
     {% endfor %}
   </div>
 </div>
 
-<!-- Hidden inventory data container -->
-<div id="inventoryData" style="display:none;">
-  {% for product in collection.products limit: 8 %}
-    {% for variant in product.variants %}
-      <div class="variant-inventory" 
-           data-variant-id="{{ variant.id }}"
-           data-inventory-quantity="{{ variant.inventory_quantity | default: 10 }}"
-           data-inventory-policy="{{ variant.inventory_policy | default: 'deny' }}">
-      </div>
-    {% endfor %}
-  {% endfor %}
-</div>
-
-<!-- Compact Fixed Progress Bar -->
-<div class="fixed-progress-bar collapsed" id="fixedProgressBar" style="display:none;">
-  <div class="progress-bar-header" id="progressHeader">
-    <div class="progress-header-left">
-      <div class="progress-icon">🎯</div>
-      <div class="progress-info">
-        <div class="progress-title-row">
-          <span class="progress-title">Bundle Progress</span>
-          <span class="items-count" id="itemsCount">0 items</span>
-        </div>
-        <div class="progress-subtitle" id="progressSubtitle">Add items to unlock discounts</div>
-      </div>
-    </div>
-    <div class="progress-header-right">
-      <button class="toggle-arrow" id="toggleArrow" type="button">▼</button>
-    </div>
-  </div>
-
-  <div class="progress-track-container">
-    <div class="progress-track-wrapper">
-      <div class="progress-stats">
-        <div class="progress-percent" id="progressPercent">0%</div>
-        <div class="next-tier" id="nextTier"></div>
-      </div>
-
-      <div class="progress-track" id="progressTrack">
-        <div class="progress-fill items" id="progressFillItems" style="width:0%"></div>
-        <div class="progress-fill discount" id="progressFillDiscount" style="width:0%"></div>
-        <div class="progress-milestones" id="progressMilestones"></div>
-      </div>
-
-      <div class="tier-labels" id="tierLabels"></div>
-    </div>
-
-    <!-- Review Bundle -->
-    <div class="bundle-review" id="bundleReview">
-      <div class="bundle-review-header" id="reviewHeader">
-        <span>Review Bundle Items</span>
-        <span class="review-toggle-arrow">▼</span>
-      </div>
-      <div class="bundle-review-items" id="bundleReviewItems">
-        <!-- Filled by JS -->
-      </div>
-    </div>
-
-    <div class="progress-actions">
-      <button class="apply-discount-btn" id="applyDiscountBtn" onclick="applyBundleDiscount()" disabled type="button">
-        <span>🎉</span>
-        <span id="applyBtnText">Add items to unlock discount</span>
-      </button>
-
-      <button class="view-cart-btn" onclick="window.location.href='/cart'" type="button">
-        View Cart
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- Product Details Modal -->
-<div class="bundle-modal-overlay" id="bundleModalOverlay">
-  <div class="bundle-modal" role="dialog" aria-modal="true">
+<!-- Product Modal -->
+<div class="bundle-modal-overlay" id="productModal">
+  <div class="bundle-modal">
     <div class="bundle-modal-header">
-      <div class="bundle-modal-title" id="bundleModalTitle">Product Details</div>
-      <button class="bundle-modal-close" type="button" onclick="closeProductModal()">✕</button>
+      <h2 class="bundle-modal-title" id="modalTitle">Product Details</h2>
+      <button class="bundle-modal-close" onclick="closeProductModal()">✕</button>
     </div>
-
+    
     <div class="bundle-modal-body">
-      <div class="modal-image-box">
-        <img id="bundleModalImage" src="" alt="">
-        <div class="modal-out-of-stock" id="modalOutOfStock" style="display:none;">
-          <div class="modal-out-of-stock-badge">Out of Stock</div>
+      <!-- Image Gallery -->
+      <div class="modal-image-section">
+        <div class="modal-main-image" id="modalMainImage">
+          <img src="" alt="Product Image">
+        </div>
+        <div class="modal-carousel-container">
+          <button class="carousel-btn prev" id="carouselPrev" onclick="moveCarousel(-1)">‹</button>
+          <div class="modal-carousel-wrapper">
+            <div class="modal-carousel" id="modalCarousel"></div>
+          </div>
+          <button class="carousel-btn next" id="carouselNext" onclick="moveCarousel(1)">›</button>
         </div>
       </div>
-
+      
+      <!-- Product Info -->
       <div class="modal-info">
-        <h3 id="bundleModalProductTitle"></h3>
+        <h3 id="modalProductTitle"></h3>
         
         <div class="modal-price-container">
-          <div class="modal-price" id="bundleModalPrice"></div>
+          <div id="modalPriceDisplay"></div>
         </div>
         
-        <div class="modal-inventory-info" id="modalInventoryInfo"></div>
-
-        <div class="modal-options" id="bundleModalOptions"></div>
-
-        <div class="modal-qty">
-          <label>Quantity:</label>
-          <div class="modal-qty-controls">
-            <button class="modal-qty-btn" type="button" id="modalQtyMinus">-</button>
-            <input type="text" class="modal-qty-input" id="bundleModalQty" value="1">
-            <button class="modal-qty-btn" type="button" id="modalQtyPlus">+</button>
-          </div>
+        <div class="modal-inventory-info in-stock" id="modalStock">
+          <span>✓</span> In Stock
+        </div>
+        
+        <!-- Variant Selection as Boxes -->
+        <div class="modal-variants-section" id="modalVariantsSection">
+          <div class="modal-variants-label">Select Variant</div>
+          <div class="modal-variant-boxes" id="modalVariantBoxes"></div>
         </div>
       </div>
     </div>
-
+    
+    <!-- Modal Footer with Quantity and Add Button -->
     <div class="bundle-modal-footer">
-      <div class="modal-actions">
-        <button class="modal-add-btn" type="button" id="modalAddBtn">
-          <span>🛒</span>
-          <span>Add to Cart</span>
-        </button>
-        <button class="modal-view-product" type="button" id="bundleModalViewProductBtn">
-          <span>🔍</span>
-          <span>View Full Page</span>
-        </button>
+      <div class="modal-qty-section">
+        <div class="modal-qty-label">Quantity:</div>
+        <div class="modal-qty-controls">
+          <button class="modal-qty-btn" onclick="decreaseModalQty()">-</button>
+          <input type="number" class="modal-qty-input" id="modalQtyInput" value="1" min="1" max="10">
+          <button class="modal-qty-btn" onclick="increaseModalQty()">+</button>
+        </div>
       </div>
+      
+      <button class="modal-add-btn" id="modalAddBtn" onclick="addToBundle()">
+        🛒 Add to Bundle
+      </button>
     </div>
   </div>
 </div>
 
+<!-- Bottom Bar -->
+<div class="fixed-bottom-bar" id="bottomBar">
+  <!-- Review Section (Moves Above) -->
+  <div class="bundle-review-section" id="reviewSection">
+    <button class="review-close-btn" onclick="toggleReviewSection()">✕</button>
+    <div class="bottom-bar-content">
+      <div class="bundle-review-items" id="reviewItems"></div>
+    </div>
+  </div>
 
-<!-- Loader Overlay -->
+  <div class="bottom-bar-content">
+    <div class="discount-status-bar" id="discountStatusBar"></div>
+    <div class="bottom-bar-header" id="bottomBarHeader">
+      <button class="checkout-btn" id="checkoutBtn" onclick="handleBottomBarAction()">
+        <span class="btn-badge" id="btnCartBadge">0</span>
+        <span id="checkoutBtnText">Review Your Pack</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification -->
+<div class="bundle-toast" id="bundleToast"></div>
+
+<!-- Loader -->
 <div class="bundle-loader-overlay" id="bundleLoader">
   <div class="bundle-loader-box">
     <div class="bundle-spinner"></div>
-    <div class="bundle-loader-text" id="bundleLoaderText">Loading...</div>
+    <div id="loaderText">Processing...</div>
   </div>
 </div>
 
 <script>
-/* ==================== GLOBAL STATE ==================== */
+// ==================== GLOBAL STATE ====================
 let bundleState = {
   allBundles: [],
   allRules: [],
   activeBundle: null,
   activeRule: null,
-
   cartItems: 0,
   cart: null,
   cartProducts: {},
-
   currentDiscountCode: null,
   currentDiscountPercent: 0,
-
   productPrices: {},
   discountCodes: {},
   lastAppliedCode: null,
-
   isCreatingDiscount: false,
   isFetchingBundles: false,
-  isUpdatingPrices: false,
   isApplyingDiscount: false,
-
   lastCartSignature: null,
   cartFetchInFlight: false,
-
   lastToastKey: null,
-
   // Modal state
   modal: {
     open: false,
     product: null,
     selectedVariantId: null,
     selectedVariant: null,
-    variantInventoryQuantity: 10,
-    inventoryPolicy: 'deny',
-    maxQuantity: 10
+    carouselContainerWidth: 0,
+    carouselPosition: 0,
+    carouselVisibleCount: 0
   },
-
-  // Review state
-  reviewExpanded: false
+  // Your Pack state
+  yourPackExpanded: false
 };
 
-/* ==================== PERSISTENT STORAGE ==================== */
+// Cart items array
+let bundleItems = [];
+
+// ==================== INITIALIZATION ====================
+document.addEventListener('DOMContentLoaded', function() {
+  loadPersistentData();
+  
+  // Try to load bundles from metafield immediately
+  const metafieldBundles = {{ shop.metafields.bundle_app.rules.value.bundles | json | default: '[]' }};
+  if (metafieldBundles && metafieldBundles.length > 0) {
+    bundleState.allBundles = metafieldBundles;
+    processBundlesData(metafieldBundles);
+  }
+  
+  // Initialize product prices
+  document.querySelectorAll('.bundle-product').forEach(product => {
+    const priceElement = product.querySelector('.price-original');
+    if (priceElement) {
+      const originalPrice = parseInt(priceElement.getAttribute('data-original-price'));
+      bundleState.productPrices[product.dataset.productId] = { 
+        original: originalPrice, 
+        discounted: originalPrice 
+      };
+    }
+  });
+  
+  // No manual event listener needed as we use onclick in HTML
+  
+  // Modal event listeners
+  document.getElementById('modalQtyInput')?.addEventListener('input', handleModalQtyInput);
+  document.getElementById('modalQtyInput')?.addEventListener('change', validateModalQty);
+  document.getElementById('modalAddBtn')?.addEventListener('click', addToBundle);
+  
+  // Modal overlay click to close
+  document.getElementById('productModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeProductModal();
+    }
+  });
+  
+  // Keyboard support
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && bundleState.modal.open) {
+      closeProductModal();
+    }
+  });
+
+  // Initialize bundles and cart
+  (async function() {
+    showLoader('Loading...');
+    
+    await fetchAllBundles();
+    await updateCartData({ reason: 'init', force: true });
+    hideLoader();
+  })();
+  
+  // Refresh cart on focus
+  window.addEventListener('focus', () => updateCartData({ reason: 'focus' }));
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) updateCartData({ reason: 'visibility' });
+  });
+  
+  // Handle window resize for carousel
+  window.addEventListener('resize', debounce(function() {
+    if (bundleState.modal.open && bundleState.modal.product) {
+      calculateCarouselVisibleCount();
+      updateCarouselButtons();
+    }
+  }, 250));
+});
+
+// ==================== PERSISTENT STORAGE ====================
 const STORAGE_KEY = 'bundle_discounts_v8';
 
 function loadPersistentData() {
@@ -539,279 +1290,16 @@ function saveDiscountCode(bundleId, tierIndex, code) {
   savePersistentData();
 }
 
-/* ==================== INVENTORY FUNCTIONS ==================== */
-// Get variant title summary (e.g., "6 / Medium")
-function getVariantTitle(variant) {
-  if (variant.selectedOptions && variant.selectedOptions.length > 0) {
-    return variant.selectedOptions.map(opt => opt.value).join(' / ');
-  }
-  return variant.title;
-}
-
-// Get unique options from variants
-function getProductOptions(variants) {
-  const options = {};
-  
-  variants.forEach(variant => {
-    variant.selectedOptions.forEach(opt => {
-      if (!options[opt.name]) {
-        options[opt.name] = new Set();
-      }
-      options[opt.name].add(opt.value);
-    });
-  });
-  
-  const result = {};
-  for (const name in options) {
-    result[name] = Array.from(options[name]).sort();
-  }
-  return result;
-}
-
-// Find variant by selected options
-function findVariantByOptions(variants, selectedOptions) {
-  return variants.find(variant => {
-    return variant.selectedOptions.every(opt => {
-      const selectedValue = selectedOptions[opt.name];
-      return selectedValue === opt.value;
-    });
-  });
-}
-
-// Get inventory data from hidden HTML container
-function getVariantInventory(variantId) {
-  const inventoryEl = document.querySelector(`.variant-inventory[data-variant-id="${variantId}"]`);
-  if (inventoryEl) {
-    return {
-      inventoryQuantity: parseInt(inventoryEl.dataset.inventoryQuantity) || 10,
-      inventoryPolicy: inventoryEl.dataset.inventoryPolicy || 'deny'
-    };
-  }
-  return {
-    inventoryQuantity: 10,
-    inventoryPolicy: 'deny'
-  };
-}
-
-// Calculate max available quantity
-function calculateMaxAvailableQuantity(variant, inventoryData) {
-  if (!variant.available) {
-    return 0;
-  }
-  
-  const DEFAULT_MAX = 10;
-  const inventoryQuantity = inventoryData?.inventoryQuantity || DEFAULT_MAX;
-  const inventoryPolicy = inventoryData?.inventoryPolicy || 'deny';
-  
-  if (inventoryPolicy === 'continue') {
-    return Math.max(inventoryQuantity, DEFAULT_MAX);
-  } else if (inventoryPolicy === 'deny') {
-    return Math.min(inventoryQuantity, DEFAULT_MAX);
-  }
-  
-  return DEFAULT_MAX;
-}
-
-/* ==================== SHOPIFY FUNCTIONS ==================== */
-async function fetchProductVariants(productHandle) {
-  try {
-    const query = `
-      query getProductVariants($handle: String!) {
-        productByHandle(handle: $handle) {
-          id
-          title
-          description
-          featuredImage {
-            url(transform: { maxWidth: 400, maxHeight: 400 })
-            altText
-          }
-          variants(first: 50) {
-            edges {
-              node {
-                id
-                title
-                sku
-                availableForSale
-                price {
-                  amount
-                  currencyCode
-                }
-                compareAtPrice {
-                  amount
-                  currencyCode
-                }
-                selectedOptions {
-                  name
-                  value
-                }
-                image {
-                  url(transform: { maxWidth: 400, maxHeight: 400 })
-                  altText
-                }
-              }
-            }
-          }
-        }
-      }
-    `;
-
-    const response = await fetch('/api/graphql', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'X-Shopify-Storefront-Access-Token': 'f657d89d1c608a51ad3deba7ac448bfa'
-      },
-      body: JSON.stringify({
-        query,
-        variables: { handle: productHandle }
-      })
-    });
-
-    const result = await response.json();
-    
-    if (result.errors) {
-      console.error('GraphQL errors:', result.errors);
-      throw new Error('Failed to fetch product variants');
-    }
-
-    const product = result.data.productByHandle;
-    if (!product) throw new Error('Product not found');
-    
-    const variants = product.variants.edges.map(edge => {
-      const node = edge.node;
-      const priceAmount = parseFloat(node.price?.amount) || 0;
-      const priceInCents = Math.round(priceAmount * 100);
-      let compareAtPriceInCents = null;
-      if (node.compareAtPrice && node.compareAtPrice.amount) {
-        const compareAtPriceAmount = parseFloat(node.compareAtPrice.amount) || 0;
-        compareAtPriceInCents = Math.round(compareAtPriceAmount * 100);
-      }
-      
-      return {
-        id: node.id.split('/').pop(),
-        title: node.title,
-        sku: node.sku,
-        available: node.availableForSale,
-        price: priceInCents,
-        compare_at_price: compareAtPriceInCents,
-        selectedOptions: node.selectedOptions || [],
-        image: node.image ? {
-          url: node.image.url,
-          altText: node.image.altText
-        } : null
-      };
-    });
-
-    return {
-      product: {
-        id: product.id,
-        title: product.title,
-        description: product.description,
-        handle: productHandle,
-        featuredImage: product.featuredImage ? {
-          url: product.featuredImage.url,
-          altText: product.featuredImage.altText
-        } : null
-      },
-      variants
-    };
-
-  } catch (error) {
-    console.error('Error fetching product variants:', error);
-    throw error;
-  }
-}
-
-function checkVariantInCart(variantId) {
-  const cartItems = bundleState.cart?.items || [];
-  return cartItems.find(item => 
-    item.variant_id && parseInt(item.variant_id) === parseInt(variantId)
-  );
-}
-
-function showToast(message, type = 'info') {
-  const key = `${type}:${message}`;
-  if (bundleState.lastToastKey === key) return;
-  bundleState.lastToastKey = key;
-
-  const toast = document.createElement('div');
-  toast.className = `bundle-toast ${type}`;
-  toast.textContent = message;
-
-  document.body.appendChild(toast);
-  setTimeout(() => toast.classList.add('show'), 40);
-
-  setTimeout(() => {
-    toast.classList.remove('show');
-    setTimeout(() => toast.remove(), 250);
-  }, 3000);
-}
-
-function showLoader(text = 'Loading...') {
-  const loader = document.getElementById('bundleLoader');
-  const loaderText = document.getElementById('bundleLoaderText');
-  if (!loader || !loaderText) return;
-  loaderText.textContent = text;
-  loader.style.display = 'flex';
-}
-
-function hideLoader() {
-  const loader = document.getElementById('bundleLoader');
-  if (!loader) return;
-  loader.style.display = 'none';
-}
-
-/* ==================== INITIALIZATION ==================== */
-document.addEventListener('DOMContentLoaded', function() {
-  loadPersistentData();
-  document.querySelectorAll('.bundle-product').forEach(product => {
-    const productId = product.dataset.productId;
-    const price = parseFloat(product.dataset.price);
-    bundleState.productPrices[productId] = { original: price, discounted: price };
-  });
-  
-  // Add event listeners
-  document.getElementById('progressHeader')?.addEventListener('click', toggleProgressBar);
-  document.getElementById('reviewHeader')?.addEventListener('click', toggleBundleReview);
-  
-  // Modal event listeners
-  document.getElementById('modalQtyMinus')?.addEventListener('click', () => adjustModalQty(-1));
-  document.getElementById('modalQtyPlus')?.addEventListener('click', () => adjustModalQty(1));
-  document.getElementById('bundleModalQty')?.addEventListener('input', handleModalQtyInput);
-  document.getElementById('modalAddBtn')?.addEventListener('click', addModalProductToCart);
-  
-  document.getElementById('bundleModalOverlay')?.addEventListener('click', (e) => {
-    if (e.target?.id === 'bundleModalOverlay') closeProductModal();
-  });
-  
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && bundleState.modal.open) closeProductModal();
-  });
-
-  setPricesToSkeleton();
-  
-  // Initialize in correct order: fetch bundles first, then update cart
-  (async function() {
-    await fetchAllBundles();
-    await updateCartData({ reason: 'init', force: true });
-  })();
-  
-  window.addEventListener('focus', () => updateCartData({ reason: 'focus' }));
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) updateCartData({ reason: 'visibility' });
-  });
-});
-
+// ==================== BUNDLE API FUNCTIONS ====================
 async function fetchAllBundles() {
   try {
-    const collectionId = document.querySelector('.bundle-wrapper')?.dataset.collectionId;
-    if (!collectionId) return;
-
+    const collectionId = document.querySelector('.bundle-wrapper')?.dataset?.collectionId;
     bundleState.isFetchingBundles = true;
-    showLoader('Fetching bundles...');
-    const APP_URL = '{{ app_url }}';
-
+    
+    // Replace with your actual API endpoint
+    const APP_URL = 'https://bundle-app-c4km.onrender.com';
+    
+    // Fetch in background to update any cached data
     const response = await fetch(`${APP_URL}/api/bundles`, {
       headers: {
         'Authorization': 'Bearer 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',
@@ -819,39 +1307,69 @@ async function fetchAllBundles() {
       }
     });
 
-    if (!response.ok) throw new Error('Failed to fetch bundles');
-
-    const data = await response.json();
-    if (data.success && Array.isArray(data.bundles)) {
-      const collectionBundles = data.bundles.filter(b =>
-        b.collectionId && b.collectionId.toString() === collectionId.toString()
-      );
-
-      bundleState.allBundles = collectionBundles;
-
-      if (bundleState.allBundles.length > 0) {
-        bundleState.allBundles.forEach(bundle => {
-          if (bundle.rules) {
-            bundle.rules.forEach((rule, idx) => {
-              const tierIndex = (rule.tierIndex ?? idx);
-              rule.tierIndex = tierIndex;
-              rule.discountCode = getSavedDiscountCode(bundle.id, tierIndex);
-            });
-          }
-        });
-
-        flattenAllRules();
-        showProgressBar();
-        renderAllRules();
-        updateUI();
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && Array.isArray(data.bundles)) {
+        processBundlesData(data.bundles, collectionId);
+        return;
       }
+    }
+    
+    if (!bundleState.allBundles.length) {
+      useFallbackBundleRules();
     }
   } catch (error) {
     console.error('Error fetching bundles:', error);
+    if (!bundleState.allBundles.length) {
+      useFallbackBundleRules();
+    }
   } finally {
     bundleState.isFetchingBundles = false;
-    hideLoader();
   }
+}
+
+function processBundlesData(bundles, collectionId) {
+  let filteredBundles = bundles;
+  if (collectionId) {
+    filteredBundles = bundles.filter(b =>
+      b.collectionId && b.collectionId.toString() === collectionId.toString()
+    );
+  }
+
+  bundleState.allBundles = filteredBundles;
+  
+  if (bundleState.allBundles.length > 0) {
+    bundleState.allBundles.forEach(bundle => {
+      if (bundle.rules) {
+        bundle.rules.forEach((rule, idx) => {
+          const tierIndex = (rule.tierIndex ?? idx);
+          rule.tierIndex = tierIndex;
+          rule.discountCode = getSavedDiscountCode(bundle.id, tierIndex);
+        });
+      }
+    });
+
+    flattenAllRules();
+    renderBundleRules();
+    updateUI();
+  }
+}
+
+function useFallbackBundleRules() {
+  // Fallback to default rules if API fails
+  bundleState.allBundles = [{
+    id: 'default',
+    rules: [
+      { totalProducts: 3, discountPercentage: 20, tierIndex: 0 },
+      { totalProducts: 5, discountPercentage: 25, tierIndex: 1 },
+      { totalProducts: 10, discountPercentage: 30, tierIndex: 2 },
+      { totalProducts: 20, discountPercentage: 40, tierIndex: 3 }
+    ]
+  }];
+  
+  flattenAllRules();
+  renderBundleRules();
+  updateUI();
 }
 
 function flattenAllRules() {
@@ -884,17 +1402,30 @@ function findBestMatchingRule() {
   return null;
 }
 
-function findBundleForRule(rule) {
-  if (!rule) return null;
-  return bundleState.allBundles.find(bundle => String(bundle.id) === String(rule.bundleId));
+// ==================== RENDER BUNDLE RULES ====================
+function renderBundleRules() {
+  const container = document.getElementById('bundleRules');
+  if (!container) return;
+
+  if (bundleState.allRules.length === 0) {
+    container.innerHTML = '<div class="bundle-rule-badge">No bundle rules available</div>';
+    return;
+  }
+
+  const totalItems = bundleState.cartItems;
+  
+  container.innerHTML = bundleState.allRules.map((rule, idx) => {
+    const isActive = totalItems >= rule.totalProducts;
+    const discountText = rule.discountPercentage ? `${rule.discountPercentage}% Off` : 'Discount';
+    return `
+      <div class="bundle-rule-badge ${isActive ? 'active' : ''}" title="${rule.totalProducts}+ items - ${discountText}">
+        ${rule.totalProducts} Pack · ${discountText}
+      </div>
+    `;
+  }).join('');
 }
 
-/* ==================== CART FUNCTIONS ==================== */
-function getCartSignature(cart) {
-  if (!cart || !Array.isArray(cart.items)) return 'empty';
-  return cart.items.map(i => `${i.variant_id}:${i.quantity}`).sort().join('|');
-}
-
+// ==================== CART FUNCTIONS ====================
 async function updateCartData({ reason, force } = {}) {
   try {
     if (bundleState.cartFetchInFlight) return;
@@ -917,101 +1448,70 @@ async function updateCartData({ reason, force } = {}) {
       });
     }
 
-    const signature = getCartSignature(cart);
-    if (!force && bundleState.lastCartSignature === signature && reason !== 'force') {
-      bundleState.cartFetchInFlight = false;
-      return;
-    }
-    bundleState.lastCartSignature = signature;
-
     bundleState.cartItems = cart.items.reduce((total, item) => total + item.quantity, 0);
+
+    // Update bundle items array from cart
+    bundleItems = cart.items.map(item => ({
+      productId: item.product_id,
+      variantId: item.variant_id,
+      title: item.product_title,
+      variantTitle: item.variant_title,
+      price: item.price,
+      image: item.image,
+      quantity: item.quantity,
+      key: item.key,
+      linePrice: item.line_price,
+      originalLinePrice: item.original_line_price
+    }));
 
     const bestRule = findBestMatchingRule();
     if (bestRule) {
       bundleState.activeRule = bestRule;
-      bundleState.activeBundle = findBundleForRule(bestRule);
-      // SET DISCOUNT PERCENT IMMEDIATELY SO UI UPDATES REACTIVELY
       bundleState.currentDiscountPercent = bestRule.discountPercentage;
+      await checkAndCreateDiscount(bestRule);
     } else {
       bundleState.activeRule = null;
-      bundleState.activeBundle = null;
-      bundleState.currentDiscountCode = null;
       bundleState.currentDiscountPercent = 0;
     }
 
+    // Update UI
     updateUI();
-    updateProductPrices(); // Update grid and modal prices immediately
-    renderBundleReviewItems(); // Update review prices immediately
+    updateAllPrices();
+    updateBottomBar();
 
-    if (bestRule) {
-      await checkAndCreateDiscount(bestRule);
-    } else {
-      updateProductPrices();
-    }
   } catch (error) {
     console.error('Error fetching cart:', error);
     bundleState.currentDiscountPercent = 0;
-    updateProductPrices();
+    updateAllPrices();
   } finally {
     bundleState.cartFetchInFlight = false;
   }
 }
 
-/* ==================== DISCOUNT FUNCTIONS ==================== */
+// ==================== DISCOUNT FUNCTIONS ====================
 async function checkAndCreateDiscount(rule) {
   if (bundleState.isCreatingDiscount || !rule) return;
-
-  setPricesToSkeleton();
 
   if (!rule.discountCode) {
     await createDiscountCode(rule);
   } else {
     bundleState.currentDiscountCode = rule.discountCode;
     bundleState.currentDiscountPercent = rule.discountPercentage;
-
     await applyDiscountToCart(rule.discountCode, { showToastOnApply: false });
-
     updateUI();
-    updateProductPrices();
+    updateAllPrices();
   }
 }
 
 async function createDiscountCode(rule) {
   if (bundleState.isCreatingDiscount || !rule) return;
 
-  setPricesToSkeleton();
-
-  if (!rule.discountCode) {
-    const collectionId = document.querySelector('.bundle-wrapper')?.dataset.collectionId;
-    
-    if (!collectionId) {
-      console.error('Collection ID not found!');
-      showToast('❌ Unable to create discount: Collection not specified', 'error');
-      bundleState.currentDiscountPercent = 0;
-      updateProductPrices();
-      return;
-    }
-    
-    await createDiscountCodeAPI(rule, collectionId);
-  } else {
-    bundleState.currentDiscountCode = rule.discountCode;
-    bundleState.currentDiscountPercent = rule.discountPercentage;
-
-    await applyDiscountToCart(rule.discountCode, { showToastOnApply: false });
-
-    updateUI();
-    updateProductPrices();
-  }
-}
-
-async function createDiscountCodeAPI(rule, collectionId) {
-  if (bundleState.isCreatingDiscount) return;
   bundleState.isCreatingDiscount = true;
+  showLoader('Activating bundle discount...');
 
   try {
-    showLoader(`Activating ${rule.discountPercentage}% bundle offer...`);
-    updateRuleCardStatus(rule.bundleId, rule.tierIndex || 0, 'creating');
-    const APP_URL = '{{ app_url }}';
+    const collectionId = document.querySelector('.bundle-wrapper')?.dataset.collectionId;
+    const APP_URL = 'https://bundle-app-c4km.onrender.com';
 
     const response = await fetch(`${APP_URL}/api/create-discount`, {
       method: 'POST',
@@ -1029,34 +1529,15 @@ async function createDiscountCodeAPI(rule, collectionId) {
     if (!data.success) throw new Error(data.error || 'Failed to create discount');
 
     rule.discountCode = data.discountCode;
-
-    const idx = bundleState.allRules.findIndex(r =>
-      String(r.bundleId) === String(rule.bundleId) && Number(r.tierIndex) === Number(rule.tierIndex)
-    );
-    if (idx !== -1) bundleState.allRules[idx].discountCode = data.discountCode;
-
-    const bIdx = bundleState.allBundles.findIndex(b => String(b.id) === String(rule.bundleId));
-    if (bIdx !== -1) {
-      const rIdx = bundleState.allBundles[bIdx].rules.findIndex(r => Number(r.tierIndex) === Number(rule.tierIndex));
-      if (rIdx !== -1) bundleState.allBundles[bIdx].rules[rIdx].discountCode = data.discountCode;
-    }
-
-    saveDiscountCode(rule.bundleId, rule.tierIndex || 0, data.discountCode);
-
     bundleState.currentDiscountCode = data.discountCode;
-    bundleState.currentDiscountPercent = rule.discountPercentage;
 
-    showToast(`🎉 Bundle discount applied! You saved ${rule.discountPercentage}% on this bundle.`, 'success');
-
-    await applyDiscountToCart(data.discountCode, { showToastOnApply: false });
-
+    await applyDiscountToCart(data.discountCode);
     updateUI();
-    updateProductPrices();
+    showToast(`✅ ${rule.discountPercentage}% bundle discount applied!`, 'success');
+
   } catch (error) {
     console.error('Error creating discount:', error);
-    updateRuleCardStatus(rule.bundleId, rule.tierIndex || 0, 'error');
-    bundleState.currentDiscountPercent = 0;
-    updateProductPrices();
+    showToast('❌ Failed to activate discount', 'error');
   } finally {
     bundleState.isCreatingDiscount = false;
     hideLoader();
@@ -1064,1211 +1545,562 @@ async function createDiscountCodeAPI(rule, collectionId) {
 }
 
 async function applyDiscountToCart(discountCode, { showToastOnApply = true } = {}) {
-  if (!discountCode) return;
-  if (bundleState.isApplyingDiscount) return;
-  if (bundleState.lastAppliedCode === discountCode) return;
-
-  bundleState.isApplyingDiscount = true;
-
-  try {
-    try {
-      await fetch('/cart/update.js', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ discount: discountCode })
-      });
-
-      bundleState.lastAppliedCode = discountCode;
-      savePersistentData();
-
-      if (showToastOnApply) showToast('✅ Bundle discount applied to your cart.', 'success');
-      return;
-    } catch (err) {
-      console.warn('Cart API discount apply failed, fallback redirect', err);
-    }
-
-    bundleState.lastAppliedCode = discountCode;
-    savePersistentData();
-
-    if (showToastOnApply) showToast('✅ Applying bundle discount...', 'success');
-    window.location.href = `/discount/${encodeURIComponent(discountCode)}?redirect=/cart`;
-  } finally {
-    bundleState.isApplyingDiscount = false;
-  }
-}
-
-function applyBundleDiscount() {
-  if (!bundleState.currentDiscountCode) return;
-  const url = `/discount/${encodeURIComponent(bundleState.currentDiscountCode)}?redirect=/cart`;
-  window.location.href = url;
-}
-
-/* ==================== UI FUNCTIONS ==================== */
-function renderAllRules() {
-  const container = document.getElementById('bundleRulesContainer');
-  if (!container) return;
-
-  container.innerHTML = '';
-
-  bundleState.allRules.forEach((rule, idx) => {
-    const card = document.createElement('div');
-    card.className = 'bundle-rule-card';
-    card.dataset.bundleId = rule.bundleId;
-    card.dataset.tierIndex = rule.tierIndex ?? idx;
-
-    card.innerHTML = `
-      <div class="rule-tier">${rule.tier || `Tier ${idx + 1}`}</div>
-      <div class="rule-quantity">${rule.totalProducts}+ items</div>
-      <div class="rule-discount">${rule.discountPercentage}% OFF</div>
-      <div class="rule-status locked">Locked</div>
-      <div class="rule-code" style="display:none;">${rule.discountCode || ''}</div>
-    `;
-
-    container.appendChild(card);
-  });
-}
-
-function updateUI() {
-  updateProgressBar();
-  updateRuleCards();
-  updateReviewButton();
-}
-
-function getMaxTierProducts() {
-  if (!bundleState.allRules.length) return 0;
-  return Math.max(...bundleState.allRules.map(r => Number(r.totalProducts || 0)));
-}
-
-function updateProgressBar() {
-  const progressBar = document.getElementById('fixedProgressBar');
-  if (!progressBar) return;
-
-  document.getElementById('itemsCount').textContent =
-    `${bundleState.cartItems} item${bundleState.cartItems !== 1 ? 's' : ''}`;
-
-  const subtitle = document.getElementById('progressSubtitle');
-  const nextRule = bundleState.allRules.find(r => bundleState.cartItems < r.totalProducts);
-
-  if (bundleState.activeRule) {
-    if (bundleState.currentDiscountCode) {
-      subtitle.textContent = `🎉 Bundle offer active: ${bundleState.activeRule.discountPercentage}% OFF`;
-    } else {
-      subtitle.textContent = `Activating ${bundleState.activeRule.discountPercentage}% OFF...`;
-    }
-  } else if (nextRule) {
-    const needed = nextRule.totalProducts - bundleState.cartItems;
-    subtitle.textContent = `Add ${needed} more item${needed !== 1 ? 's' : ''} to unlock ${nextRule.discountPercentage}% OFF`;
-  } else {
-    subtitle.textContent = 'Add items to unlock discounts';
-  }
-
-  updateProgressTrack();
-
-  const applyBtn = document.getElementById('applyDiscountBtn');
-  const applyText = document.getElementById('applyBtnText');
-
-  if (bundleState.activeRule && bundleState.currentDiscountCode) {
-    applyBtn.disabled = false;
-    applyText.textContent = `Apply ${bundleState.activeRule.discountPercentage}% Discount`;
-  } else if (bundleState.activeRule && !bundleState.currentDiscountCode) {
-    applyBtn.disabled = true;
-    applyText.textContent = `Preparing ${bundleState.activeRule.discountPercentage}% discount...`;
-  } else if (nextRule) {
-    applyBtn.disabled = true;
-    const needed = nextRule.totalProducts - bundleState.cartItems;
-    applyText.textContent = `Add ${needed} more item${needed !== 1 ? 's' : ''} for discount`;
-  } else {
-    applyBtn.disabled = true;
-    applyText.textContent = 'Add items to unlock discount';
-  }
-}
-
-function updateProgressTrack() {
-  if (bundleState.allRules.length === 0) return;
-
-  const maxItems = getMaxTierProducts();
-  const progress = maxItems > 0 ? Math.min(100, Math.round((bundleState.cartItems / maxItems) * 100)) : 0;
-
-  const itemsFill = document.getElementById('progressFillItems');
-  const discountFill = document.getElementById('progressFillDiscount');
-
-  if (itemsFill) itemsFill.style.width = `${progress}%`;
-
-  let achievedProgress = 0;
-  if (bundleState.activeRule && maxItems > 0) {
-    achievedProgress = Math.min(100, Math.round((bundleState.activeRule.totalProducts / maxItems) * 100));
-  }
-  if (discountFill) discountFill.style.width = `${achievedProgress}%`;
-
-  const percentText = document.getElementById('progressPercent');
-  if (percentText) percentText.textContent = `${progress}%`;
-
-  const nextTier = document.getElementById('nextTier');
-  if (nextTier) {
-    if (bundleState.activeRule) {
-      const nextRule = bundleState.allRules.find(r => r.totalProducts > bundleState.activeRule.totalProducts);
-      if (nextRule) {
-        const needed = nextRule.totalProducts - bundleState.cartItems;
-        nextTier.innerHTML = `Add <strong>${needed} more</strong> to unlock ${nextRule.discountPercentage}% OFF`;
-      } else {
-        nextTier.innerHTML = '<strong>🏆 Maximum discount achieved!</strong>';
-      }
-    } else {
-      const firstRule = bundleState.allRules[0];
-      if (firstRule) {
-        const needed = firstRule.totalProducts - bundleState.cartItems;
-        nextTier.innerHTML = needed > 0 ? `Add <strong>${needed} more</strong> to unlock discounts` : '';
-      }
-    }
-  }
+  if (!discountCode || bundleState.lastAppliedCode === discountCode) return;
   
-  updateMilestones(maxItems);
-}
-
-function updateMilestones(maxItems) {
-  const milestones = document.getElementById('progressMilestones');
-  const labels = document.getElementById('tierLabels');
-  if (!milestones || !labels) return;
-
-  milestones.innerHTML = '';
-  labels.innerHTML = '';
-
-  const uniqueThresholds = [...new Set(bundleState.allRules.map(r => r.totalProducts))].sort((a,b)=>a-b);
-
-  uniqueThresholds.forEach(threshold => {
-    const percentage = maxItems > 0 ? (threshold / maxItems) * 100 : 0;
-
-    const rulesAtThreshold = bundleState.allRules.filter(r => r.totalProducts === threshold);
-    const isActive = bundleState.activeRule && rulesAtThreshold.some(r =>
-      String(r.bundleId) === String(bundleState.activeRule.bundleId) &&
-      Number(r.tierIndex) === Number(bundleState.activeRule.tierIndex)
-    );
-
-    const isUnlocked = bundleState.cartItems >= threshold;
-
-    const milestone = document.createElement('div');
-    milestone.className = 'progress-milestone';
-    milestone.style.left = `${percentage}%`;
-
-    if (isActive) {
-      milestone.classList.add('active');
-      milestone.innerHTML = '<span class="milestone-icon">🎯</span>';
-    } else if (isUnlocked) {
-      milestone.classList.add('unlocked');
-      milestone.innerHTML = '<span class="milestone-icon">✓</span>';
-    } else {
-      milestone.classList.add('locked');
-      milestone.innerHTML = '<span class="milestone-icon">🔒</span>';
-    }
-
-    milestones.appendChild(milestone);
-
-    const label = document.createElement('div');
-    label.className = 'tier-label';
-    label.style.left = `${percentage}%`;
-    label.textContent = threshold;
-
-    if (isActive) label.classList.add('active');
-    else if (isUnlocked) label.classList.add('achieved');
-
-    labels.appendChild(label);
-  });
-}
-
-function updateRuleCards() {
-  document.querySelectorAll('.bundle-rule-card').forEach(card => {
-    const bundleId = card.dataset.bundleId;
-    const tierIndex = parseInt(card.dataset.tierIndex);
-
-    const rule = bundleState.allRules.find(r =>
-      String(r.bundleId) === String(bundleId) && Number(r.tierIndex) === Number(tierIndex)
-    );
-    if (!rule) return;
-
-    const statusEl = card.querySelector('.rule-status');
-    const codeEl = card.querySelector('.rule-code');
-
-    card.classList.remove('active');
-
-    const isActive = bundleState.activeRule &&
-      String(bundleState.activeRule.bundleId) === String(bundleId) &&
-      Number(bundleState.activeRule.tierIndex) === Number(tierIndex);
-
-    if (isActive && bundleState.currentDiscountCode) {
-      card.classList.add('active');
-      statusEl.textContent = 'Active';
-      statusEl.className = 'rule-status active';
-    } else if (bundleState.cartItems >= rule.totalProducts) {
-      statusEl.textContent = rule.discountCode ? 'Unlocked' : 'Qualified';
-      statusEl.className = 'rule-status unlocked';
-    } else {
-      statusEl.textContent = 'Locked';
-      statusEl.className = 'rule-status locked';
-      if (codeEl) codeEl.style.display = 'none';
-    }
-  });
-}
-
-function setPricesToSkeleton() {
-  document.querySelectorAll('.bundle-product').forEach(product => {
-    const productId = product.dataset.productId;
-    const priceEl = document.getElementById(`price-${productId}`);
-    if (!priceEl) return;
-    if (priceEl.dataset.loading === '1') return;
-    priceEl.dataset.loading = '1';
-    priceEl.innerHTML = `<span class="bundle-price-skeleton" aria-label="Updating price"></span>`;
-  });
-}
-
-function releasePriceSkeleton() {
-  document.querySelectorAll('.price-wrapper').forEach(el => {
-    el.dataset.loading = '0';
-  });
-}
-
-function updateProductPrices() {
-  const discountPercent = bundleState.currentDiscountPercent;
-
-  // 1. Update Grid Products
-  document.querySelectorAll('.bundle-product').forEach(product => {
-    const productId = product.dataset.productId;
-    const priceData = bundleState.productPrices[productId];
-    if (!priceData) return;
-
-    const priceEl = document.getElementById(`price-${productId}`);
-    const badgeEl = document.getElementById(`discountBadge-${productId}`);
-
-    if (!priceEl) return;
-
-    if (discountPercent > 0) {
-      const originalPrice = priceData.original;
-      const discountedPrice = originalPrice * (1 - discountPercent / 100);
-
-      priceEl.innerHTML = `
-        <div class="price-original cut">${formatCurrency(originalPrice)}</div>
-        <div class="price-discounted">${formatCurrency(discountedPrice)}</div>
-      `;
-
-      if (badgeEl) {
-        badgeEl.textContent = `${discountPercent}% OFF`;
-        badgeEl.style.display = 'block';
-      }
-
-      product.classList.add('discounted');
-      priceData.discounted = discountedPrice;
-    } else {
-      priceEl.innerHTML = `<div class="price-original">${formatCurrency(priceData.original)}</div>`;
-      if (badgeEl) badgeEl.style.display = 'none';
-      product.classList.remove('discounted');
-      priceData.discounted = priceData.original;
-    }
-
-    priceEl.dataset.loading = '0';
-  });
-
-  // 2. Update Modal Price if open
-  if (bundleState.modal.open && bundleState.modal.selectedVariant) {
-    const priceEl = document.getElementById('bundleModalPrice');
-    if (priceEl) {
-      const variant = bundleState.modal.selectedVariant;
-      const originalPriceCents = variant.compare_at_price || variant.price;
-      const currentPriceCents = variant.price;
-      
-      const discountedPriceCents = discountPercent > 0 
-        ? Math.round(currentPriceCents * (1 - discountPercent / 100))
-        : currentPriceCents;
-
-      if (originalPriceCents > discountedPriceCents) {
-        priceEl.innerHTML = `
-          <span class="modal-price-original">${formatCurrencyFromCents(originalPriceCents)}</span>
-          <span>${formatCurrencyFromCents(discountedPriceCents)}</span>
-        `;
-      } else {
-        priceEl.textContent = formatCurrencyFromCents(discountedPriceCents);
-      }
-    }
-  }
-
-  releasePriceSkeleton();
-}
-
-function updateRuleCardStatus(bundleId, tierIndex, status) {
-  const card = document.querySelector(`.bundle-rule-card[data-bundle-id="${bundleId}"][data-tier-index="${tierIndex}"]`);
-  if (!card) return;
-
-  const statusEl = card.querySelector('.rule-status');
-  if (!statusEl) return;
-
-  if (status === 'creating') {
-    statusEl.textContent = 'Creating...';
-    statusEl.className = 'rule-status';
-    statusEl.style.background = '#f6e05e';
-    statusEl.style.color = '#744210';
-  } else if (status === 'error') {
-    statusEl.textContent = 'Error';
-    statusEl.className = 'rule-status';
-    statusEl.style.background = '#fed7d7';
-    statusEl.style.color = '#742a2a';
-  }
-}
-
-/* ==================== PRODUCT MODAL ==================== */
-async function openProductModal(handle) {
   try {
-    document.body.classList.add('no-scroll');
-    showLoader('Loading product...');
-
-    const productData = await fetchProductVariants(handle);
-    
-    if (!productData || !productData.product) {
-      showToast('❌ Product not found', 'error');
-      closeProductModal();
-      return;
-    }
-    
-    bundleState.modal.product = productData.product;
-    bundleState.modal.product.variants = productData.variants;
-    
-    // Get all options
-    const options = getProductOptions(productData.variants);
-    
-    // Find first available variant or first variant
-    let selectedVariant = productData.variants.find(v => v.available) || productData.variants[0];
-    if (!selectedVariant) {
-      showToast('❌ No variants available for this product', 'error');
-      closeProductModal();
-      return;
-    }
-    
-    // Get inventory data
-    const inventoryData = getVariantInventory(selectedVariant.id);
-    
-    bundleState.modal.selectedVariantId = selectedVariant.id;
-    bundleState.modal.selectedVariant = selectedVariant;
-    bundleState.modal.variantInventoryQuantity = inventoryData.inventoryQuantity;
-    bundleState.modal.inventoryPolicy = inventoryData.inventoryPolicy;
-    
-    // Calculate max available quantity
-    const maxAvailable = calculateMaxAvailableQuantity(selectedVariant, inventoryData);
-    bundleState.modal.maxQuantity = maxAvailable;
-    
-    // Check what's already in cart
-    const cartItem = checkVariantInCart(selectedVariant.id);
-    const alreadyInCart = cartItem ? cartItem.quantity : 0;
-    const availableToAdd = Math.max(0, maxAvailable - alreadyInCart);
-    
-    bundleState.modal.open = true;
-
-    const overlay = document.getElementById('bundleModalOverlay');
-    if (!overlay) {
-      console.error('Modal overlay not found');
-      closeProductModal();
-      return;
-    }
-    
-    overlay.style.display = 'flex';
-    
-    // Update modal content
-    document.getElementById('bundleModalTitle').textContent = productData.product.title;
-    document.getElementById('bundleModalProductTitle').textContent = productData.product.title;
-    
-    // Update image
-    const imgEl = document.getElementById('bundleModalImage');
-    const outOfStockEl = document.getElementById('modalOutOfStock');
-    
-    let imageUrl = '';
-    if (selectedVariant.image && selectedVariant.image.url) {
-      imageUrl = selectedVariant.image.url;
-    } else if (productData.product.featuredImage && productData.product.featuredImage.url) {
-      imageUrl = productData.product.featuredImage.url;
-    }
-    
-    if (imgEl) {
-      if (imageUrl) {
-        if (imageUrl.startsWith('//')) {
-          imageUrl = 'https:' + imageUrl;
-        }
-        imgEl.src = imageUrl;
-        imgEl.alt = productData.product.title;
-        imgEl.style.display = 'block';
-      } else {
-        imgEl.style.display = 'none';
-        const fallbackText = imgEl.parentNode.querySelector('.image-fallback') || document.createElement('div');
-        fallbackText.className = 'image-fallback';
-        fallbackText.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:#718096;font-size:14px;';
-        fallbackText.textContent = 'No Image Available';
-        imgEl.parentNode.appendChild(fallbackText);
-      }
-    }
-    
-    if (outOfStockEl) {
-      outOfStockEl.style.display = !selectedVariant.available ? 'flex' : 'none';
-    }
-    
-    // Update price with discount
-    const priceEl = document.getElementById('bundleModalPrice');
-    if (priceEl && selectedVariant.price) {
-      const originalPriceCents = selectedVariant.compare_at_price || selectedVariant.price;
-      const currentPriceCents = selectedVariant.price;
-      const discountPercent = bundleState.currentDiscountPercent;
-      
-      const discountedPriceCents = discountPercent > 0 
-        ? Math.round(currentPriceCents * (1 - discountPercent / 100))
-        : currentPriceCents;
-
-      if (originalPriceCents > discountedPriceCents) {
-        priceEl.innerHTML = `
-          <span class="modal-price-original">${formatCurrencyFromCents(originalPriceCents)}</span>
-          <span>${formatCurrencyFromCents(discountedPriceCents)}</span>
-        `;
-      } else {
-        priceEl.textContent = formatCurrencyFromCents(discountedPriceCents);
-      }
-    }
-    
-    // Update inventory info
-    updateModalInventoryInfo(selectedVariant, inventoryData, alreadyInCart);
-    
-    // Render dynamic options
-    renderModalOptions(options, selectedVariant.selectedOptions);
-    
-    // Set quantity
-    const qtyInput = document.getElementById('bundleModalQty');
-    if (qtyInput) {
-      qtyInput.value = availableToAdd > 0 ? '1' : '0';
-      updateModalQtyButtons(alreadyInCart);
-    }
-    
-    // Update add button
-    const addBtn = document.getElementById('modalAddBtn');
-    if (addBtn) {
-      addBtn.disabled = !selectedVariant.available || availableToAdd <= 0;
-    }
-    
-    // Update view product button
-    const viewBtn = document.getElementById('bundleModalViewProductBtn');
-    if (viewBtn) {
-      viewBtn.onclick = () => window.location.href = `/products/${handle}`;
-    }
-    
-  } catch (error) {
-    console.error('Error in openProductModal:', error);
-    showToast('❌ Unable to open product details. Please try again.', 'error');
-    closeProductModal();
-  } finally {
-    hideLoader();
-  }
-}
-
-function renderModalOptions(options, selectedOptions) {
-  const optionsWrap = document.getElementById('bundleModalOptions');
-  if (!optionsWrap) return;
-
-  optionsWrap.innerHTML = '';
-  
-  for (const optionName in options) {
-    const selectedValue = selectedOptions.find(opt => opt.name === optionName)?.value;
-    const values = options[optionName];
-    
-    const optionDiv = document.createElement('div');
-    optionDiv.className = 'modal-option';
-    optionDiv.innerHTML = `
-      <label>${escapeHtml(optionName)}</label>
-      <select class="bundle-modal-option-select" data-option-name="${escapeHtml(optionName)}">
-        ${values.map(val => `<option value="${escapeHtml(val)}" ${val === selectedValue ? 'selected' : ''}>${escapeHtml(val)}</option>`).join('')}
-      </select>
-    `;
-    optionsWrap.appendChild(optionDiv);
-  }
-  
-  // Add event listeners to all selects
-  optionsWrap.querySelectorAll('.bundle-modal-option-select').forEach(select => {
-    select.addEventListener('change', updateSelectedVariantFromOptions);
-  });
-}
-
-async function updateSelectedVariantFromOptions() {
-  try {
-    const selects = document.querySelectorAll('.bundle-modal-option-select');
-    const selectedOptions = {};
-    
-    selects.forEach(select => {
-      selectedOptions[select.dataset.optionName] = select.value;
+    await fetch('/cart/update.js', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ discount: discountCode })
     });
     
-    // Find variant by matching all selected options
-    const variant = findVariantByOptions(bundleState.modal.product.variants, selectedOptions);
+    bundleState.lastAppliedCode = discountCode;
+    savePersistentData();
     
-    if (!variant) {
-      showToast('❌ Selected option combination is not available', 'error');
-      
-      // Clear selection
-      bundleState.modal.selectedVariantId = null;
-      bundleState.modal.selectedVariant = null;
-      bundleState.modal.variantInventoryQuantity = 0;
-      bundleState.modal.maxQuantity = 0;
-      
-      const addBtn = document.getElementById('modalAddBtn');
-      if (addBtn) addBtn.disabled = true;
-      
-      const outOfStockEl = document.getElementById('modalOutOfStock');
-      if (outOfStockEl) outOfStockEl.style.display = 'flex';
-      
-      const inventoryEl = document.getElementById('modalInventoryInfo');
-      if (inventoryEl) {
-        inventoryEl.textContent = 'Combination not available';
-        inventoryEl.className = 'modal-inventory-info out-of-stock';
-      }
-      
-      return;
-    }
-
-    // Get inventory data
-    const inventoryData = getVariantInventory(variant.id);
-    
-    bundleState.modal.selectedVariantId = variant.id;
-    bundleState.modal.selectedVariant = variant;
-    bundleState.modal.variantInventoryQuantity = inventoryData.inventoryQuantity;
-    bundleState.modal.inventoryPolicy = inventoryData.inventoryPolicy;
-    
-    // Calculate max available quantity
-    const maxAvailable = calculateMaxAvailableQuantity(variant, inventoryData);
-    bundleState.modal.maxQuantity = maxAvailable;
-    
-    // Check what's already in cart
-    const cartItem = checkVariantInCart(variant.id);
-    const alreadyInCart = cartItem ? cartItem.quantity : 0;
-    const availableToAdd = Math.max(0, maxAvailable - alreadyInCart);
-    
-    // Update UI
-    const outOfStockEl = document.getElementById('modalOutOfStock');
-    if (!variant.available) {
-      if (outOfStockEl) outOfStockEl.style.display = 'flex';
-    } else {
-      if (outOfStockEl) outOfStockEl.style.display = 'none';
-    }
-
-    // Update price with discount
-    const priceEl = document.getElementById('bundleModalPrice');
-    if (priceEl) {
-      const originalPriceCents = variant.compare_at_price || variant.price;
-      const currentPriceCents = variant.price;
-      const discountPercent = bundleState.currentDiscountPercent;
-      
-      const discountedPriceCents = discountPercent > 0 
-        ? Math.round(currentPriceCents * (1 - discountPercent / 100))
-        : currentPriceCents;
- 
-      if (originalPriceCents > discountedPriceCents) {
-        priceEl.innerHTML = `
-          <span class="modal-price-original">${formatCurrencyFromCents(originalPriceCents)}</span>
-          <span>${formatCurrencyFromCents(discountedPriceCents)}</span>
-        `;
-      } else {
-        priceEl.textContent = formatCurrencyFromCents(discountedPriceCents);
-      }
-    }
-
-    updateModalInventoryInfo(variant, inventoryData, alreadyInCart);
-    
-    // Update image if variant has its own image
-    const imgEl = document.getElementById('bundleModalImage');
-    if (imgEl && variant.image && variant.image.url) {
-      if (variant.image.url.startsWith('//')) {
-        imgEl.src = 'https:' + variant.image.url;
-      } else {
-        imgEl.src = variant.image.url;
-      }
-      imgEl.alt = variant.image.altText || bundleState.modal.product.title;
-    }
-    
-    // Update quantity controls
-    const qtyInput = document.getElementById('bundleModalQty');
-    if (qtyInput) {
-      qtyInput.value = availableToAdd > 0 ? '1' : '0';
-      updateModalQtyButtons(alreadyInCart);
-    }
-    
-    // Update add button
-    const addBtn = document.getElementById('modalAddBtn');
-    if (addBtn) {
-      addBtn.disabled = !variant.available || availableToAdd <= 0;
-    }
-
-    if (!variant.available) {
-      showToast('⚠️ Selected variant is out of stock.', 'warning');
-    } else if (availableToAdd <= 0) {
-      showToast('⚠️ Maximum quantity already in cart.', 'warning');
-    }
+    if (showToastOnApply) showToast('✅ Bundle discount applied to your cart.', 'success');
   } catch (error) {
-    console.error('Error updating variant:', error);
-    showToast('❌ Failed to update variant', 'error');
+    console.error('Error applying discount:', error);
   }
 }
 
-function updateModalInventoryInfo(variant, inventoryData, alreadyInCart = 0) {
-  const element = document.getElementById('modalInventoryInfo');
-  if (!element || !variant) return;
+// ==================== MODAL FUNCTIONS ====================
+function openProductModal(productId) {
+  const productData = getProductData(productId);
+  if (!productData) return;
   
-  if (!variant.available) {
-    element.textContent = 'Out of Stock';
-    element.className = 'modal-inventory-info out-of-stock';
-  } else {
-    // Calculate actual available quantity
-    const maxAvailable = calculateMaxAvailableQuantity(variant, inventoryData);
-    const availableToAdd = Math.max(0, maxAvailable - alreadyInCart);
-    
-    if (availableToAdd <= 0) {
-      element.textContent = 'Maximum quantity in cart';
-      element.className = 'modal-inventory-info out-of-stock';
-    } else if (availableToAdd <= 3) {
-      element.textContent = `Low Stock: ${availableToAdd} available`;
-      element.className = 'modal-inventory-info low-stock';
-    } else {
-      element.textContent = `In Stock: ${availableToAdd} available`;
-      element.className = 'modal-inventory-info in-stock';
-    }
-  }
-}
-
-function adjustModalQty(change) {
-  const qtyInput = document.getElementById('bundleModalQty');
-  if (!qtyInput || !bundleState.modal.selectedVariant) return;
+  bundleState.modal.product = productData;
   
-  let currentQty = parseInt(qtyInput.value) || 1;
-  let newQty = currentQty + change;
-  
-  // Minimum quantity is 1
-  newQty = Math.max(1, newQty);
-  
-  // Check what's already in cart
-  const cartItem = checkVariantInCart(bundleState.modal.selectedVariantId);
-  const alreadyInCart = cartItem ? cartItem.quantity : 0;
-  
-  // Calculate maximum allowed based on inventory
-  const maxAvailable = bundleState.modal.maxQuantity;
-  const availableToAdd = Math.max(0, maxAvailable - alreadyInCart);
-  const maxQtyToSet = Math.min(availableToAdd, 10); // Also cap at 10 per order
-  
-  // Apply maximum limit
-  newQty = Math.min(newQty, maxQtyToSet);
-  
-  qtyInput.value = newQty;
-  updateModalQtyButtons(alreadyInCart);
-}
-
-function handleModalQtyInput(e) {
-  const qtyInput = e.target;
-  let value = qtyInput.value.trim();
-  
-  // Allow only numbers
-  value = value.replace(/[^\d]/g, '');
-  
-  if (value === '') {
-    value = '1';
+  // Get first available variant or first variant
+  const firstAvailableVariant = productData.variants.find(v => v.available) || productData.variants[0];
+  if (!firstAvailableVariant) {
+    showToast('❌ This product is out of stock', 'error');
+    return;
   }
   
-  let newQty = parseInt(value);
-  if (isNaN(newQty) || newQty < 1) {
-    newQty = 1;
+  bundleState.modal.selectedVariantId = firstAvailableVariant.id;
+  bundleState.modal.selectedVariant = firstAvailableVariant;
+  
+  // Reset carousel positions
+  bundleState.modal.carouselPosition = 0;
+  
+  // Set modal content
+  document.getElementById('modalTitle').textContent = productData.title;
+  document.getElementById('modalProductTitle').textContent = productData.title;
+  
+  // Set main image
+  const mainImage = document.querySelector('#modalMainImage img');
+  if (mainImage) {
+    mainImage.src = firstAvailableVariant.image || productData.image;
+    mainImage.alt = productData.title;
   }
   
-  // Check what's already in cart
-  const cartItem = checkVariantInCart(bundleState.modal.selectedVariantId);
-  const alreadyInCart = cartItem ? cartItem.quantity : 0;
+  // Render carousel thumbnails
+  renderCarousel();
   
-  // Calculate maximum allowed based on inventory
-  const maxAvailable = bundleState.modal.maxQuantity;
-  const availableToAdd = Math.max(0, maxAvailable - alreadyInCart);
-  const maxQtyToSet = Math.min(availableToAdd, 10); // Also cap at 10 per order
+  // Render variant boxes
+  renderVariantBoxes();
   
-  // Apply maximum limit
-  newQty = Math.min(newQty, maxQtyToSet);
+  // Update price
+  updateModalPrice();
   
-  qtyInput.value = newQty;
-  updateModalQtyButtons(alreadyInCart);
-}
-
-function updateModalQtyButtons(alreadyInCart = 0) {
-  const qtyInput = document.getElementById('bundleModalQty');
-  const minusBtn = document.getElementById('modalQtyMinus');
-  const plusBtn = document.getElementById('modalQtyPlus');
-  const addBtn = document.getElementById('modalAddBtn');
+  // Update stock status
+  updateModalStockStatus();
   
-  if (!qtyInput || !minusBtn || !plusBtn || !addBtn) return;
+  // Reset quantity
+  document.getElementById('modalQtyInput').value = 1;
   
-  const currentQty = parseInt(qtyInput.value) || 1;
+  // Show modal
+  document.getElementById('productModal').style.display = 'flex';
+  document.body.classList.add('modal-open');
+  bundleState.modal.open = true;
   
-  // Update buttons based on available inventory
-  const maxAvailable = bundleState.modal.maxQuantity;
-  const availableToAdd = Math.max(0, maxAvailable - alreadyInCart);
-  const maxQtyToSet = Math.min(availableToAdd, 10);
-  const isAvailable = bundleState.modal.selectedVariant && bundleState.modal.selectedVariant.available;
-
-  // Update minus button
-  minusBtn.disabled = !isAvailable || availableToAdd <= 0 || currentQty <= (availableToAdd > 0 ? 1 : 0);
-  
-  // Update plus button
-  plusBtn.disabled = !isAvailable || availableToAdd <= 0 || currentQty >= maxQtyToSet;
-  
-  // Update add button
-  addBtn.disabled = !bundleState.modal.selectedVariant || 
-                    !bundleState.modal.selectedVariant.available || 
-                    bundleState.modal.maxQuantity <= 0;
-}
-
-async function addModalProductToCart() {
-  try {
-    const product = bundleState.modal.product;
-    const variant = bundleState.modal.selectedVariant;
-    const qty = parseInt(document.getElementById('bundleModalQty')?.value || 1);
-
-    if (!product || !variant) {
-      showToast('❌ Please select all product options first.', 'error');
-      return;
-    }
-    
-    if (qty < 1) {
-      showToast('❌ Please enter a valid quantity.', 'warning');
-      return;
-    }
-    
-    if (!variant.available) {
-      showToast('❌ This variant is out of stock.', 'error');
-      return;
-    }
-    
-    // Check what's already in cart
-    const cartItem = checkVariantInCart(variant.id);
-    const alreadyInCart = cartItem ? cartItem.quantity : 0;
-    const totalAfterAdd = alreadyInCart + qty;
-    
-    // Get inventory data
-    const inventoryData = getVariantInventory(variant.id);
-    const maxAvailable = calculateMaxAvailableQuantity(variant, inventoryData);
-    
-    if (totalAfterAdd > maxAvailable && maxAvailable > 0) {
-      const canAdd = maxAvailable - alreadyInCart;
-      showToast(`❌ Maximum quantity is ${maxAvailable}. You can add ${canAdd} more.`, 'error');
-      return;
-    }
-    
-    await addToCartWithQty(variant.id, qty);
-    
-  } catch (e) {
-    console.error('Add to cart error:', e);
-    showToast('❌ Failed to add product to cart', 'error');
-  }
-}
-
-async function addToCartWithQty(variantId, qty) {
-  try {
-    showLoader('Adding product to cart...');
-    
-    const cartItem = checkVariantInCart(variantId);
-    
-    if (cartItem) {
-      // Update existing item
-      const newQty = cartItem.quantity + qty;
-      
-      const response = await fetch('/cart/change.js', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ 
-          id: cartItem.key,
-          quantity: newQty
-        })
-      });
-      
-      const result = await response.json();
-      
-      if (response.ok) {
-        showToast('✅ Added to cart.', 'success');
-        closeProductModal();
-        await updateCartData({ reason: 'modal_add', force: true });
-        expandProgressBar();
-      } else {
-        throw new Error(result.description || 'Failed to add product');
-      }
-    } else {
-      // Add new item
-      const response = await fetch('/cart/add.js', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ 
-          id: variantId, 
-          quantity: qty 
-        })
-      });
-      
-      const result = await response.json();
-      
-      if (response.ok) {
-        // Use result.key if available, fallback to variantId
-        const targetId = result.key || result.id || variantId;
-        
-        // Use /cart/update.js with 'updates' object - most reliable for keys
-        await fetch('/cart/update.js', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({ 
-            updates: { [String(targetId)]: qty }
-          })
-        });
-
-        showToast('✅ Added to cart.', 'success');
-        closeProductModal();
-        await updateCartData({ reason: 'modal_add', force: true });
-        expandProgressBar();
-      } else {
-        throw new Error(result.description || 'Failed to add product');
-      }
-    }
-  } catch (error) {
-    console.error('Add to cart error:', error);
-    
-    if (error.message.includes('maximum quantity') || 
-        error.message.includes('only') || 
-        error.message.includes('available')) {
-      showToast(`⚠️ ${error.message}`, 'warning');
-    } else if (error.message.includes('out of stock')) {
-      showToast(`❌ ${error.message}`, 'error');
-    } else {
-      showToast(`❌ ${error.message || 'Failed to add product'}`, 'error');
-    }
-    
-    // Refresh cart data
-    await updateCartData({ reason: 'add_error', force: true });
-  } finally {
-    hideLoader();
-  }
+  // Calculate carousel visible count after modal is displayed
+  setTimeout(() => {
+    calculateCarouselVisibleCount();
+    updateCarouselButtons();
+  }, 100);
 }
 
 function closeProductModal() {
-  const overlay = document.getElementById('bundleModalOverlay');
-  if (overlay) overlay.style.display = 'none';
-  document.body.classList.remove('no-scroll');
+  document.getElementById('productModal').style.display = 'none';
+  document.body.classList.remove('modal-open');
   bundleState.modal.open = false;
   bundleState.modal.product = null;
   bundleState.modal.selectedVariantId = null;
   bundleState.modal.selectedVariant = null;
-  bundleState.modal.variantInventoryQuantity = 10;
-  bundleState.modal.maxQuantity = 10;
+  bundleState.modal.carouselPosition = 0;
 }
 
-/* ==================== BUNDLE REVIEW FUNCTIONS ==================== */
-function toggleBundleReview() {
-  if (bundleState.cartItems === 0) {
-    showToast('Your cart is empty. Add some items first!', 'warning');
-    return;
-  }
-  
-  bundleState.reviewExpanded = !bundleState.reviewExpanded;
-  const reviewBox = document.getElementById('bundleReview');
-  
-  if (reviewBox) {
-    if (bundleState.reviewExpanded) {
-      reviewBox.classList.add('expanded');
-    } else {
-      reviewBox.classList.remove('expanded');
-    }
+// ==================== CAROUSEL FUNCTIONS ====================
+function calculateCarouselVisibleCount() {
+  // Thumbnails carousel
+  const thumbContainer = document.querySelector('.modal-carousel-wrapper');
+  if (thumbContainer) {
+    const width = thumbContainer.offsetWidth;
+    const itemWidth = 92; // 80px + 12px gap
+    bundleState.modal.carouselVisibleCount = Math.max(1, Math.floor(width / itemWidth));
   }
 }
 
-function updateReviewButton() {
-  const reviewBox = document.getElementById('bundleReview');
-  if (!reviewBox) return;
+function renderCarousel() {
+  const carousel = document.getElementById('modalCarousel');
+  if (!carousel || !bundleState.modal.product) return;
   
-  if (bundleState.cartItems > 0) {
-    reviewBox.classList.add('active');
-    
-    // If progress bar is expanded, ensure review is too
-    const progressBar = document.getElementById('fixedProgressBar');
-    if (progressBar && progressBar.classList.contains('expanded')) {
-      bundleState.reviewExpanded = true;
-      reviewBox.classList.add('expanded');
-    }
-  } else {
-    reviewBox.classList.remove('active');
-    reviewBox.classList.remove('expanded');
-    bundleState.reviewExpanded = false;
-  }
-}
-
-async function renderBundleReviewItems() {
-  const wrap = document.getElementById('bundleReviewItems');
-  const reviewBox = document.getElementById('bundleReview');
-  if (!wrap || !reviewBox) return;
-
-  const cart = bundleState.cart;
-  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
-    wrap.innerHTML = `
-      <div style="padding:24px;text-align:center;color:#718096;">
-        <div style="font-size:48px;margin-bottom:12px;">🛒</div>
-        <div style="font-weight:700;font-size:14px;margin-bottom:8px;">Your cart is empty</div>
-        <div style="font-size:12px;">Add products from the bundle to get started</div>
+  // Only show images for available variants
+  const variants = bundleState.modal.product.variants.filter(v => v.available);
+  const selectedVariantId = bundleState.modal.selectedVariantId;
+  
+  // If no available variants have specific images, show at least the featured product image
+  const displayItems = variants.length > 0 ? variants : [{...bundleState.modal.product.variants[0], available: false}];
+  
+  carousel.innerHTML = displayItems.map(variant => {
+    const isSelected = selectedVariantId === variant.id;
+    return `
+      <div class="modal-thumbnail ${isSelected ? 'active' : ''}"
+         onclick="selectVariantFromThumbnail('${variant.id}')">
+        <img src="${variant.image}" alt="${variant.title}" loading="lazy">
       </div>
     `;
+  }).join('');
+  
+  // Reset transform
+  carousel.style.transform = 'translateX(0)';
+}
+
+function moveCarousel(direction) {
+  const variants = bundleState.modal.product?.variants.filter(v => v.available) || [];
+  const displayCount = variants.length;
+  const maxPosition = Math.max(0, displayCount - bundleState.modal.carouselVisibleCount);
+  
+  let newPosition = bundleState.modal.carouselPosition + direction;
+  newPosition = Math.max(0, Math.min(newPosition, maxPosition));
+  
+  bundleState.modal.carouselPosition = newPosition;
+  
+  const carousel = document.getElementById('modalCarousel');
+  if (carousel) {
+    const translateX = -newPosition * 92; // 80px width + 12px gap
+    carousel.style.transform = `translateX(${translateX}px)`;
+  }
+  
+  updateCarouselButtons();
+}
+
+function updateCarouselButtons() {
+  const variants = bundleState.modal.product?.variants.filter(v => v.available) || [];
+  const displayCount = variants.length;
+  const prevBtn = document.querySelector('.carousel-btn.prev');
+  const nextBtn = document.querySelector('.carousel-btn.next');
+  
+  if (prevBtn) {
+    prevBtn.disabled = bundleState.modal.carouselPosition === 0;
+  }
+  
+  if (nextBtn) {
+    const maxPosition = Math.max(0, displayCount - bundleState.modal.carouselVisibleCount);
+    nextBtn.disabled = bundleState.modal.carouselPosition >= maxPosition;
+  }
+}
+
+
+function selectVariantFromThumbnail(variantId) {
+  const variant = bundleState.modal.product?.variants.find(v => v.id === variantId);
+  if (!variant || !variant.available) return;
+  
+  bundleState.modal.selectedVariantId = variantId;
+  bundleState.modal.selectedVariant = variant;
+  
+  // Update main image
+  const mainImage = document.querySelector('#modalMainImage img');
+  if (mainImage) mainImage.src = variant.image;
+  
+  // Update carousel active state
+  updateCarouselActiveState();
+  
+  // Update variant boxes
+  renderVariantBoxes();
+  
+  // Update price
+  updateModalPrice();
+  
+  // Update stock status
+  updateModalStockStatus();
+}
+
+function updateCarouselActiveState() {
+  const thumbnails = document.querySelectorAll('.modal-thumbnail');
+  thumbnails.forEach(thumb => {
+    thumb.classList.remove('active');
+    const onclickAttr = thumb.getAttribute('onclick');
+    if (onclickAttr) {
+      const variantId = onclickAttr.match(/'([^']+)'/)?.[1];
+      if (variantId === bundleState.modal.selectedVariantId) {
+        thumb.classList.add('active');
+      }
+    }
+  });
+}
+
+// ==================== VARIANT BOXES ====================
+function renderVariantBoxes() {
+  const container = document.getElementById('modalVariantBoxes');
+  if (!bundleState.modal.product) return;
+  
+  // Only show available variants
+  const variants = bundleState.modal.product.variants.filter(v => v.available);
+  const selectedVariantId = bundleState.modal.selectedVariantId;
+  
+  if (variants.length <= 1) {
+    document.getElementById('modalVariantsSection').style.display = 'none';
     return;
   }
-
-  // Process cart items
-  const itemsWithInfo = await Promise.all(cart.items.map(async (item) => {
-    try {
-      const productHandle = item.handle || `product-${item.product_id}`;
-      
-      // Fetch product data
-      const productData = await fetchProductVariants(productHandle);
-      let variant = null;
-      
-      if (productData && productData.variants) {
-        variant = productData.variants.find(v => parseInt(v.id) === parseInt(item.variant_id));
-      }
-      
-      // Get variant title summary
-      let variantSummary = '';
-      if (variant) {
-        variantSummary = getVariantTitle(variant);
-      } else {
-        variantSummary = item.variant_title || 'Default';
-      }
-      
-      // Get inventory data
-      const inventoryData = getVariantInventory(item.variant_id);
-      const maxQuantity = variant ? calculateMaxAvailableQuantity(variant, inventoryData) : 10;
-      
-      let productImage = null;
-      if (variant && variant.image && variant.image.url) {
-        productImage = variant.image.url;
-      } else if (productData && productData.product.featuredImage && productData.product.featuredImage.url) {
-        productImage = productData.product.featuredImage.url;
-      } else if (item.image) {
-        productImage = item.image;
-      }
-      
-      if (productImage) {
-        if (productImage.startsWith('//')) {
-          productImage = 'https:' + productImage;
-        }
-      }
-      
-      return {
-        ...item,
-        product_handle: productHandle,
-        available: variant ? variant.available : true,
-        variant_summary: variantSummary,
-        variant_data: variant,
-        inventory_data: inventoryData,
-        product_title: item.product_title || 'Unknown Product',
-        max_quantity: maxQuantity,
-        current_quantity: item.quantity,
-        line_item_key: item.key,
-        product_image: productImage
-      };
-      
-    } catch (error) {
-      console.error('Error fetching product info:', error);
-      return {
-        ...item,
-        product_handle: item.handle || `product-${item.product_id}`,
-        available: true,
-        variant_summary: item.variant_title || 'Default',
-        product_title: item.product_title || 'Unknown Product',
-        max_quantity: 10,
-        current_quantity: item.quantity,
-        line_item_key: item.key,
-        product_image: item.image || null
-      };
-    }
-  }));
-
-  wrap.innerHTML = itemsWithInfo.map(item => {
-    let imgHtml = '';
-    if (item.product_image) {
-      imgHtml = `<img src="${item.product_image}" alt="${escapeHtml(item.product_title || '')}" loading="lazy" style="width:100%;height:100%;object-fit:contain;">`;
-    } else {
-      imgHtml = `<div class="no-image" style="display:flex;align-items:center;justify-content:center;height:100%;color:#718096;font-size:10px;padding:4px;">No Image</div>`;
-    }
-    
-    const isOutOfStock = !item.available || item.max_quantity === 0;
-    const currentQty = item.current_quantity || item.quantity;
-    const isMax = currentQty >= item.max_quantity;
-    const isMin = currentQty <= 1;
-    
-    // Get inventory info
-    let inventoryInfo = '';
-    let inventoryColor = '#718096';
-    
-    if (!item.available) {
-      inventoryInfo = 'Out of Stock';
-      inventoryColor = '#dc2626';
-    } else {
-      const maxQty = item.max_quantity;
-      const availableQty = Math.max(0, maxQty - currentQty);
-      
-      if (availableQty <= 0) {
-        inventoryInfo = 'Max in cart';
-        inventoryColor = '#dc2626';
-      } else if (availableQty <= 3) {
-        inventoryInfo = `Only ${availableQty} left`;
-        inventoryColor = '#d97706';
-      } else {
-        inventoryInfo = `${availableQty} available`;
-        inventoryColor = '#16a34a';
-      }
-    }
-    
+  
+  document.getElementById('modalVariantsSection').style.display = 'block';
+  
+  container.innerHTML = variants.map(variant => {
+    const isSelected = selectedVariantId === variant.id;
     return `
-      <div class="bundle-review-item ${isOutOfStock ? 'out-of-stock' : ''}" 
-           data-variant-id="${item.variant_id}" 
-           data-product-handle="${item.product_handle}"
-           data-max-quantity="${item.max_quantity}"
-           data-available="${item.available}"
-           data-line-key="${item.line_item_key}">
-        <div class="bundle-review-left">
-          <div class="bundle-review-thumb">${imgHtml}</div>
-          <div class="bundle-review-meta">
-            <div class="bundle-review-title">
-              ${escapeHtml(item.product_title || '')}
-              ${isOutOfStock ? '<span class="out-of-stock-badge">Out of Stock</span>' : ''}
-            </div>
-            <div class="bundle-review-variant">${escapeHtml(item.variant_summary)}</div>
-            <div class="bundle-review-price">
-              ${(bundleState.currentDiscountPercent > 0) 
-                ? `<span style="text-decoration:line-through;color:#94a3b8;font-size:12px;margin-right:6px;">${formatCurrencyFromCents(item.price)}</span>
-                   <span style="color:#16a34a;font-weight:800;">${formatCurrencyFromCents(Math.round(item.price * (1 - bundleState.currentDiscountPercent / 100)))}</span>`
-                : `<span style="font-weight:800;">${formatCurrencyFromCents(item.price)}</span>`
-              } × ${currentQty}
-            </div>
-            <div style="font-size:11px;color:${inventoryColor};font-weight:600;margin-top:2px;">
-              ${inventoryInfo}
-            </div>
-          </div>
-        </div>
-        <div class="bundle-review-right">
-          <div class="qty-controls">
-            <button class="qty-btn" type="button" 
-                    onclick="adjustCartQty('${item.variant_id}', '${item.product_handle}', -1, '${item.line_item_key}')" 
-                    ${isMin || isOutOfStock ? 'disabled' : ''}>
-              -
-            </button>
-            <div class="qty-input-wrapper">
-              <input class="qty-input" type="text" value="${currentQty}" 
-                data-variant-id="${item.variant_id}"
-                data-product-handle="${item.product_handle}"
-                data-max-quantity="${item.max_quantity}"
-                data-line-key="${item.line_item_key}"
-                oninput="validateQtyInput(this)"
-                onchange="handleQtyChange(this)"
-                onblur="handleQtyBlur(this)"
-                ${isOutOfStock ? 'disabled' : ''}>
-            </div>
-            <button class="qty-btn" type="button" 
-                    onclick="adjustCartQty('${item.variant_id}', '${item.product_handle}', 1, '${item.line_item_key}')" 
-                    ${isMax || isOutOfStock ? 'disabled' : ''}>
-              +
-            </button>
-          </div>
-          <button class="remove-item-btn" type="button" 
-                  onclick="removeCartItem('${item.variant_id}', '${item.line_item_key}')">
-            <span>🗑️</span>
-            <span>Remove</span>
-          </button>
-        </div>
+      <div class="modal-variant-box ${isSelected ? 'active' : ''}"
+         onclick="selectVariant('${variant.id}')">
+        ${variant.title}
       </div>
     `;
   }).join('');
 }
 
-async function adjustCartQty(variantId, productHandle, change, lineKey) {
-  try {
-    const qtyInput = document.querySelector(`.qty-input[data-variant-id="${variantId}"]`);
-    const plusBtn = document.querySelector(`.qty-btn:last-child[onclick*="${variantId}"]`);
-    const minusBtn = document.querySelector(`.qty-btn:first-child[onclick*="${variantId}"]`);
-    
-    if (qtyInput) {
-      qtyInput.disabled = true;
-      qtyInput.style.opacity = '0.7';
-    }
-    if (plusBtn) plusBtn.disabled = true;
-    if (minusBtn) minusBtn.disabled = true;
-    
-    // Get current item from cart
-    const currentItem = bundleState.cart?.items?.find(item => 
-      parseInt(item.variant_id) === parseInt(variantId)
-    );
-    
-    if (!currentItem) {
-      showToast('❌ Item not found in cart', 'error');
-      return;
-    }
-    
-    const currentQty = currentItem.quantity;
-    const desiredQty = currentQty + change;
-    
-    if (desiredQty < 1) {
-      showToast('❌ Quantity cannot be less than 1', 'warning');
-      return;
-    }
-    
-    // Get inventory data
-    const inventoryData = getVariantInventory(variantId);
-    
-    // Fetch variant info if needed
-    let variant = null;
-    try {
-      const { variants } = await fetchProductVariants(productHandle);
-      variant = variants.find(v => parseInt(v.id) === parseInt(variantId));
-    } catch (error) {
-      console.warn('Could not fetch variant info:', error);
-    }
-    
-    // Calculate max quantity
-    const maxQty = variant ? calculateMaxAvailableQuantity(variant, inventoryData) : 10;
-    
-    if (desiredQty > maxQty) {
-      showToast(`❌ Maximum quantity is ${maxQty}`, 'warning');
-      if (change > 0 && maxQty > currentQty) {
-        await updateCartItemQty(variantId, maxQty, lineKey);
-      }
-      return;
-    }
-    
-    await updateCartItemQty(variantId, desiredQty, lineKey);
-    
-  } catch (error) {
-    console.error('Adjust quantity error:', error);
-    showToast('❌ Failed to update quantity', 'error');
-    
-    // Refresh cart data
-    await updateCartData({ reason: 'adjust_error', force: true });
-  } finally {
-    // Re-enable inputs
-    setTimeout(() => {
-      const qtyInput = document.querySelector(`.qty-input[data-variant-id="${variantId}"]`);
-      const plusBtn = document.querySelector(`.qty-btn:last-child[onclick*="${variantId}"]`);
-      const minusBtn = document.querySelector(`.qty-btn:first-child[onclick*="${variantId}"]`);
-      
-      if (qtyInput) {
-        qtyInput.disabled = false;
-        qtyInput.style.opacity = '1';
-      }
-      if (plusBtn) plusBtn.disabled = false;
-      if (minusBtn) minusBtn.disabled = false;
-    }, 500);
+function selectVariant(variantId) {
+  const variant = bundleState.modal.product?.variants.find(v => v.id === variantId);
+  if (!variant || !variant.available) return;
+  
+  bundleState.modal.selectedVariantId = variantId;
+  bundleState.modal.selectedVariant = variant;
+  
+  // Update main image
+  const mainImage = document.querySelector('#modalMainImage img');
+  if (mainImage) mainImage.src = variant.image;
+  
+  // Update carousel active state
+  updateCarouselActiveState();
+  
+  // Update variant boxes
+  renderVariantBoxes();
+  
+  // Update price
+  updateModalPrice();
+  
+  // Update stock status
+  updateModalStockStatus();
+}
+
+// ==================== MODAL HELPER FUNCTIONS ====================
+function updateModalPrice() {
+  const priceDisplay = document.getElementById('modalPriceDisplay');
+  const variant = bundleState.modal.selectedVariant;
+  
+  if (!variant) return;
+  
+  const originalPrice = variant.price;
+  const discountPercent = bundleState.currentDiscountPercent;
+  
+  if (discountPercent > 0) {
+    const discountedPrice = originalPrice * (1 - discountPercent / 100);
+    priceDisplay.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span class="modal-price">${formatCurrencyFromCents(discountedPrice)}</span>
+        <span class="modal-price-original">${formatCurrencyFromCents(originalPrice)}</span>
+      </div>
+      <div class="modal-discount-badge">
+        Save ${discountPercent}% on this pack!
+      </div>
+    `;
+  } else {
+    priceDisplay.innerHTML = `
+      <div class="modal-price">${formatCurrencyFromCents(originalPrice)}</div>
+    `;
   }
 }
 
-async function updateCartItemQty(variantId, newQty, lineItemKey) {
+function updateModalStockStatus() {
+  const stockElement = document.getElementById('modalStock');
+  const addBtn = document.getElementById('modalAddBtn');
+  const variant = bundleState.modal.selectedVariant;
+  
+  if (!variant) return;
+  
+  if (variant.available) {
+    stockElement.className = 'modal-inventory-info in-stock';
+    stockElement.innerHTML = '<span>✓</span> In Stock';
+    addBtn.disabled = false;
+  } else {
+    stockElement.className = 'modal-inventory-info out-of-stock';
+    stockElement.innerHTML = '<span>✕</span> Out of Stock';
+    addBtn.disabled = true;
+  }
+}
+
+function decreaseModalQty() {
+  const input = document.getElementById('modalQtyInput');
+  if (input.value > 1) {
+    input.value = parseInt(input.value) - 1;
+  }
+}
+
+function increaseModalQty() {
+  const input = document.getElementById('modalQtyInput');
+  if (parseInt(input.value) < 10) {
+    input.value = parseInt(input.value) + 1;
+  }
+}
+
+function handleModalQtyInput(e) {
+  let value = e.target.value;
+  value = value.replace(/[^\d]/g, '');
+  
+  if (value === '' || parseInt(value) < 1) {
+    value = '1';
+  }
+  
+  e.target.value = value;
+}
+
+function validateModalQty(e) {
+  let value = parseInt(e.target.value);
+  if (isNaN(value) || value < 1) {
+    value = 1;
+  } else if (value > 10) {
+    value = 10;
+  }
+  e.target.value = value;
+}
+
+// ==================== ADD TO BUNDLE ====================
+async function addToBundle() {
+  const variant = bundleState.modal.selectedVariant;
+  const quantity = parseInt(document.getElementById('modalQtyInput').value) || 1;
+  
+  if (!variant || !variant.available) {
+    showToast('❌ This variant is out of stock.', 'error');
+    return;
+  }
+  
+  if (quantity < 1 || quantity > 10) {
+    showToast('❌ Please enter a valid quantity (1-10).', 'warning');
+    return;
+  }
+  
+  try {
+    showLoader('Adding to pack...');
+    
+    // Add to cart using Shopify API
+    const response = await fetch('/cart/add.js', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ 
+        id: variant.id, 
+        quantity: quantity 
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      showToast('✅ Added to bundle!', 'success');
+      closeProductModal();
+      await updateCartData({ reason: 'modal_add', force: true });
+      // Expand review section when adding items
+      expandReviewSection();
+    } else {
+      throw new Error(result.description || 'Failed to add product');
+    }
+    
+  } catch (error) {
+    console.error('Add to cart error:', error);
+    showToast(`❌ ${error.message || 'Failed to add product'}`, 'error');
+  } finally {
+    hideLoader();
+  }
+}
+
+// ==================== BOTTOM BAR FUNCTIONS ====================
+function updateBottomBar() {
+  const bottomBar = document.getElementById('bottomBar');
+  const totalItems = bundleState.cartItems;
+  const statusBar = document.getElementById('discountStatusBar');
+  const btnBadge = document.getElementById('btnCartBadge');
+  const checkoutBtnText = document.getElementById('checkoutBtnText');
+  const section = document.getElementById('reviewSection');
+  
+  if (totalItems > 0) {
+    bottomBar.classList.add('visible');
+    
+    // Update Badge
+    if (btnBadge) btnBadge.textContent = totalItems;
+    
+    // Calculate total price and discount info
+    const discount = bundleState.activeRule;
+    const originalTotal = bundleItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const discountedTotal = discount ? originalTotal * (1 - discount.discountPercentage / 100) : originalTotal;
+    
+    // Update Discount Status Bar
+    if (statusBar) {
+      if (discount && discount.discountPercentage > 0) {
+        statusBar.style.display = 'block';
+        statusBar.innerHTML = `🎉 Awesome! You've unlocked ${discount.discountPercentage}% OFF - Saved ${formatCurrencyFromCents(originalTotal - discountedTotal)}`;
+      } else {
+        statusBar.style.display = 'none';
+      }
+    }
+    
+    // Update button text based on expansion state
+    const isExpanded = section.classList.contains('expanded');
+    if (isExpanded) {
+      checkoutBtnText.innerHTML = `Continue to Checkout - ${formatCurrencyFromCents(discountedTotal)}`;
+    } else {
+      checkoutBtnText.innerHTML = `Review Your Pack - ${formatCurrencyFromCents(discountedTotal)}`;
+    }
+    
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    if (checkoutBtn) checkoutBtn.disabled = false;
+    
+    // Render review items
+    renderReviewItems();
+  } else {
+    bottomBar.classList.remove('visible');
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    if (checkoutBtn) checkoutBtn.disabled = true;
+  }
+}
+
+function handleBottomBarAction() {
+  const section = document.getElementById('reviewSection');
+  const isExpanded = section.classList.contains('expanded');
+  
+  if (isExpanded) {
+    // Only proceed to checkout if the section is ALREADY expanded
+    proceedToCheckout();
+  } else {
+    // Otherwise, just open the review section
+    toggleReviewSection();
+  }
+}
+
+function toggleReviewSection() {
+  const section = document.getElementById('reviewSection');
+  const checkoutBtnText = document.getElementById('checkoutBtnText');
+  
+  if (bundleState.cartItems === 0) {
+    showToast('Your pack is empty. Add some items first!', 'warning');
+    return;
+  }
+  
+  const isExpanded = section.classList.contains('expanded');
+  
+  // Calculate total price for dynamic button text
+  const discount = bundleState.activeRule;
+  const originalTotal = bundleItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const discountedTotal = discount ? originalTotal * (1 - discount.discountPercentage / 100) : originalTotal;
+  
+  if (isExpanded) {
+    section.classList.remove('expanded');
+    checkoutBtnText.innerHTML = `Review Your Pack - ${formatCurrencyFromCents(discountedTotal)}`;
+  } else {
+    section.classList.add('expanded');
+    checkoutBtnText.innerHTML = `Continue to Checkout - ${formatCurrencyFromCents(discountedTotal)}`;
+  }
+}
+
+function expandReviewSection() {
+  const section = document.getElementById('reviewSection');
+  if (bundleState.cartItems > 0) {
+    section.classList.add('expanded');
+    updateBottomBar();
+  }
+}
+
+function renderReviewItems() {
+  const container = document.getElementById('reviewItems');
+  const discount = bundleState.activeRule;
+  
+  if (!bundleItems || bundleItems.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:#718096;padding:20px;">Your pack is empty</div>';
+    return;
+  }
+  
+  container.innerHTML = bundleItems.map((item, index) => {
+    const originalPrice = item.price;
+    const itemTotal = originalPrice * item.quantity;
+    const discountedPrice = discount ? 
+      originalPrice * (1 - discount.discountPercentage / 100) : 
+      originalPrice;
+    const discountedTotal = discountedPrice * item.quantity;
+    
+    // Check if item is in stock
+    const isInStock = item.available !== false;
+    
+    return `
+      <div class="bundle-review-item" data-index="${index}" data-variant-id="${item.variantId}" data-key="${item.key}">
+        <div class="bundle-review-thumb">
+          <img src="${item.image}" alt="${item.title}" loading="lazy">
+        </div>
+        <div class="bundle-review-info">
+          <div class="bundle-review-title">${item.title}</div>
+          <div class="bundle-review-variant">${item.variantTitle || 'Default'}</div>
+          ${!isInStock ? '<div style="color:#dc2626;font-size:11px;font-weight:600;margin-top:2px;">Out of Stock</div>' : ''}
+          ${discount && discount.discountPercentage > 0 ? `
+            <div class="bundle-review-price original">${formatCurrencyFromCents(itemTotal)}</div>
+            <div class="bundle-review-price">${formatCurrencyFromCents(discountedTotal)}</div>
+          ` : `
+            <div class="bundle-review-price">${formatCurrencyFromCents(itemTotal)}</div>
+          `}
+        </div>
+        <div class="bundle-review-qty">
+          <button class="qty-btn-small" onclick="decreaseItemQty(${index})" ${item.quantity <= 1 || !isInStock ? 'disabled' : ''}>-</button>
+          <div class="qty-display">${item.quantity}</div>
+          <button class="qty-btn-small" onclick="increaseItemQty(${index})" ${!isInStock ? 'disabled' : ''}>+</button>
+        </div>
+        <button class="remove-btn" onclick="removeItem(${index})" ${!isInStock ? 'style="opacity:0.7"' : ''}>
+          <span>🗑️</span>
+          Remove
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+function calculateTotalSavings() {
+  const discount = bundleState.activeRule;
+  if (!discount || discount.discountPercentage === 0) return 0;
+  
+  const originalTotal = bundleItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const discountedTotal = originalTotal * (1 - discount.discountPercentage / 100);
+  
+  return originalTotal - discountedTotal;
+}
+
+// ==================== ITEM QUANTITY CONTROLS ====================
+async function decreaseItemQty(index) {
+  if (index < 0 || index >= bundleItems.length) return;
+  
+  const item = bundleItems[index];
+  if (item.quantity <= 1) {
+    await removeItem(index);
+    return;
+  }
+  
+  await updateCartItemQty(item.variantId, item.quantity - 1, item.key, index);
+}
+
+async function increaseItemQty(index) {
+  if (index < 0 || index >= bundleItems.length) return;
+  
+  const item = bundleItems[index];
+  await updateCartItemQty(item.variantId, item.quantity + 1, item.key, index);
+}
+
+async function updateCartItemQty(variantId, newQty, lineItemKey, itemIndex) {
   try {
     showLoader('Updating quantity...');
     
@@ -2282,116 +2114,39 @@ async function updateCartItemQty(variantId, newQty, lineItemKey) {
         updates: { [String(lineItemKey)]: newQty }
       })
     });
-
+    
     const result = await res.json();
     
     if (!res.ok) {
-      const errorMsg = result.description || 'Failed to update cart';
-      showToast(`❌ ${errorMsg}`, 'error');
-      throw new Error(errorMsg);
+      throw new Error(result.description || 'Failed to update cart');
     }
-
-    // Success
+    
     await updateCartData({ reason: 'qty_change', force: true });
     
-    // Show success message
-    const currentData = bundleState.cartProducts[variantId];
-    if (currentData && newQty > currentData.quantity) {
-      showToast('✅ Quantity increased', 'success');
-    } else if (currentData && newQty < currentData.quantity) {
-      showToast('✅ Quantity decreased', 'success');
+    // Show appropriate message
+    if (itemIndex !== undefined) {
+      const currentItem = bundleItems[itemIndex];
+      if (currentItem && newQty > currentItem.quantity) {
+        showToast('✅ Quantity increased', 'success');
+      } else if (currentItem && newQty < currentItem.quantity) {
+        showToast('✅ Quantity decreased', 'success');
+      }
     }
     
   } catch (error) {
     console.error('Cart update error:', error);
-    throw error;
+    showToast(`❌ ${error.message}`, 'error');
   } finally {
     hideLoader();
   }
 }
 
-function handleQtyChange(input) {
+async function removeItem(index) {
+  if (index < 0 || index >= bundleItems.length) return;
+  
+  const item = bundleItems[index];
+  
   try {
-    const variantId = input.dataset.variantId;
-    const productHandle = input.dataset.productHandle;
-    const lineKey = input.dataset.lineKey;
-    
-    if (!variantId || !productHandle || !lineKey) {
-      showToast('❌ Missing product information', 'error');
-      return;
-    }
-    
-    let desiredQty = parseInt(input.value);
-    if (isNaN(desiredQty) || desiredQty < 1) {
-      input.value = '1';
-      desiredQty = 1;
-    }
-    
-    // Call update immediately
-    updateCartItemQty(variantId, desiredQty, lineKey);
-    
-  } catch (error) {
-    console.error('Quantity change error:', error);
-    showToast('❌ Please enter a valid quantity', 'error');
-    
-    // Reset to current quantity
-    const currentData = bundleState.cartProducts[input.dataset.variantId];
-    if (currentData) {
-      input.value = currentData.quantity;
-    }
-  }
-}
-
-function handleQtyBlur(input) {
-  // If input is empty after blur, set it to 1 and trigger change
-  if (input.value.trim() === '' || parseInt(input.value) < 1) {
-    input.value = '1';
-    handleQtyChange(input);
-  }
-}
-
-function validateQtyInput(input) {
-  const variantId = input.dataset.variantId;
-  const productHandle = input.dataset.productHandle;
-  const maxQty = parseInt(input.dataset.maxQuantity) || 0;
-  
-  // Allow only numbers
-  input.value = input.value.replace(/[^\d]/g, '');
-  
-  // Remove leading zeros
-  if (input.value.length > 1 && input.value.startsWith('0')) {
-    input.value = input.value.replace(/^0+/, '');
-  }
-  
-  // If empty, set to 1
-  if (input.value === '') {
-    input.value = '1';
-  }
-  
-  const currentQty = parseInt(input.value) || 1;
-  
-  // Highlight if exceeds max
-  if (maxQty > 0 && currentQty > maxQty) {
-    input.style.borderColor = '#dc2626';
-    input.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.2)';
-  } else {
-    input.style.borderColor = '';
-    input.style.boxShadow = '';
-  }
-}
-
-async function removeCartItem(variantId, lineKey) {
-  try {
-    if (!lineKey) {
-      const item = bundleState.cart?.items?.find(i => parseInt(i.variant_id) === parseInt(variantId));
-      if (item) lineKey = item.key;
-    }
-    
-    if (!lineKey) {
-      showToast('❌ Item not found in cart', 'error');
-      return;
-    }
-    
     showLoader('Removing item...');
     
     const res = await fetch('/cart/update.js', {
@@ -2401,31 +2156,123 @@ async function removeCartItem(variantId, lineKey) {
         'Accept': 'application/json'
       },
       body: JSON.stringify({ 
-        updates: { [String(lineKey)]: 0 }
+        updates: { [String(item.key)]: 0 }
       })
     });
-
+    
     if (!res.ok) throw new Error('Cart update failed');
-
+    
     await updateCartData({ reason: 'remove_item', force: true });
-    showToast('✅ Item removed from cart.', 'success');
+    showToast('✅ Item removed from pack.', 'success');
+    
   } catch (e) {
     console.error(e);
     showToast('❌ Failed to remove item.', 'error');
-    await updateCartData({ reason: 'remove_error', force: true });
   } finally {
     hideLoader();
   }
 }
 
-/* ==================== HELPER FUNCTIONS ==================== */
-function escapeHtml(str) {
-  return String(str || '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
+// ==================== CHECKOUT ====================
+async function proceedToCheckout() {
+  if (bundleItems.length === 0) return;
+  
+  // Directly redirect to checkout with the discount code in the URL
+  // This is the fastest and most reliable way in Shopify
+  const discountCode = bundleState.currentDiscountCode;
+  let checkoutUrl = '/checkout';
+  
+  if (discountCode) {
+    checkoutUrl += `?discount=${encodeURIComponent(discountCode)}`;
+  }
+  
+  window.location.href = checkoutUrl;
+}
+
+// ==================== UI UPDATE FUNCTIONS ====================
+function updateUI() {
+  renderBundleRules();
+  updateAllPrices();
+}
+
+function updateAllPrices() {
+  const discountPercent = bundleState.currentDiscountPercent;
+  
+  // Update Grid Products
+  document.querySelectorAll('.bundle-product').forEach(product => {
+    const productId = product.dataset.productId;
+    const priceData = bundleState.productPrices[productId];
+    if (!priceData) return;
+    
+    const priceEl = product.querySelector('.price-wrapper');
+    if (!priceEl) return;
+    
+    if (discountPercent > 0) {
+      const originalPrice = priceData.original;
+      const discountedPrice = originalPrice * (1 - discountPercent / 100);
+      
+      priceEl.innerHTML = `
+        <span class="price-original cut">${formatCurrencyFromCents(originalPrice)}</span>
+        <span class="price-discounted">${formatCurrencyFromCents(discountedPrice)}</span>
+      `;
+      
+      priceData.discounted = discountedPrice;
+    } else {
+      priceEl.innerHTML = `<span class="price-original">${formatCurrencyFromCents(priceData.original)}</span>`;
+      priceData.discounted = priceData.original;
+    }
+  });
+  
+  // Update Modal Price if open
+  if (bundleState.modal.open && bundleState.modal.selectedVariant) {
+    updateModalPrice();
+  }
+}
+
+// ==================== HELPER FUNCTIONS ====================
+function getProductData(productId) {
+  const productEl = document.querySelector(`#productData [data-product="${productId}"]`);
+  if (!productEl) return null;
+  
+  const variants = Array.from(productEl.querySelectorAll('[data-variants] > div')).map(v => ({
+    id: v.getAttribute('data-variant-id'),
+    title: v.getAttribute('data-variant-title'),
+    price: parseInt(v.getAttribute('data-variant-price')),
+    available: v.getAttribute('data-variant-available') === 'true',
+    image: v.getAttribute('data-variant-image')
+  }));
+  
+  return {
+    id: productId,
+    title: productEl.querySelector('[data-title]').getAttribute('data-title'),
+    price: parseInt(productEl.querySelector('[data-price]').getAttribute('data-price')),
+    available: productEl.querySelector('[data-available]').getAttribute('data-available') === 'true',
+    image: productEl.querySelector('[data-image]').getAttribute('data-image'),
+    variants: variants
+  };
+}
+
+function showToast(message, type = 'success') {
+  const toast = document.getElementById('bundleToast');
+  toast.textContent = message;
+  toast.className = `bundle-toast ${type}`;
+  toast.classList.add('show');
+  
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3000);
+}
+
+function showLoader(text = 'Processing...') {
+  const loaderText = document.getElementById('loaderText');
+  if (loaderText) {
+    loaderText.textContent = text;
+  }
+  document.getElementById('bundleLoader').style.display = 'flex';
+}
+
+function hideLoader() {
+  document.getElementById('bundleLoader').style.display = 'none';
 }
 
 function formatCurrencyFromCents(cents) {
@@ -2437,80 +2284,43 @@ function formatCurrencyFromCents(cents) {
   return '$' + amount.toFixed(2);
 }
 
-function formatCurrency(amount) {
-  if (typeof Shopify !== 'undefined' && Shopify.formatMoney) {
-    const amountInCents = Math.round(amount * 100);
-    return Shopify.formatMoney(amountInCents, window.money_format || '{{ amount }}');
-  }
-  return '$' + Number(amount).toFixed(2);
-}
-
-function showProgressBar() {
-  const progressBar = document.getElementById('fixedProgressBar');
-  if (progressBar) progressBar.style.display = 'block';
-}
-
-function expandProgressBar() {
-  const progressBar = document.getElementById('fixedProgressBar');
-  const arrow = document.getElementById('toggleArrow');
-  if (progressBar && !progressBar.classList.contains('expanded')) {
-    progressBar.classList.add('expanded');
-    if (arrow) arrow.textContent = '▲';
-    
-    // Also expand review
-    const reviewBox = document.getElementById('bundleReview');
-    if (reviewBox) {
-      bundleState.reviewExpanded = true;
-      reviewBox.classList.add('expanded');
-    }
-  }
-}
-
-function toggleProgressBar(e) {
-  e?.preventDefault?.();
-
-  const progressBar = document.getElementById('fixedProgressBar');
-  const arrow = document.getElementById('toggleArrow');
-  const reviewBox = document.getElementById('bundleReview');
-  if (!progressBar || !arrow) return;
-
-  if (progressBar.classList.contains('expanded')) {
-    progressBar.classList.remove('expanded');
-    arrow.textContent = '▼';
-    
-    // Also collapse review
-    if (reviewBox) {
-      bundleState.reviewExpanded = false;
-      reviewBox.classList.remove('expanded');
-    }
-  } else {
-    progressBar.classList.add('expanded');
-    arrow.textContent = '▲';
-    
-    // Also expand review
-    if (reviewBox) {
-      bundleState.reviewExpanded = true;
-      reviewBox.classList.add('expanded');
-    }
-  }
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
 }
 
 // Make functions globally available
 window.openProductModal = openProductModal;
 window.closeProductModal = closeProductModal;
-window.addModalProductToCart = addModalProductToCart;
-window.toggleBundleReview = toggleBundleReview;
-window.adjustCartQty = adjustCartQty;
-window.handleQtyChange = handleQtyChange;
-window.handleQtyBlur = handleQtyBlur;
-window.validateQtyInput = validateQtyInput;
-window.removeCartItem = removeCartItem;
-window.applyBundleDiscount = applyBundleDiscount;
+window.decreaseModalQty = decreaseModalQty;
+window.increaseModalQty = increaseModalQty;
+window.handleModalQtyInput = handleModalQtyInput;
+window.validateModalQty = validateModalQty;
+window.addToBundle = addToBundle;
+window.selectVariant = selectVariant;
+window.selectVariantFromThumbnail = selectVariantFromThumbnail;
+window.moveCarousel = moveCarousel;
+window.toggleReviewSection = toggleReviewSection;
+window.handleBottomBarAction = handleBottomBarAction;
+window.decreaseItemQty = decreaseItemQty;
+window.increaseItemQty = increaseItemQty;
+window.removeItem = removeItem;
+window.proceedToCheckout = proceedToCheckout;
 </script>
 
 {% else %}
-<div class="bundle-wrapper" style="text-align:center; padding:40px;">
-  <h2>Bundle Collection Not Found</h2>
+<div class="bundle-wrapper">
+  <div class="bundle-header">
+    <h1 class="bundle-title">Bundle Collection Not Found</h1>
+    <p class="bundle-description">Please select a collection in the theme settings.</p>
+  </div>
 </div>
 {% endif %}
 
